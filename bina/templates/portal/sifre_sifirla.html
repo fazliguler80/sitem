@@ -1,0 +1,10 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h2>🔐 Yeni Şifre Belirle</h2>
+<form method="post">
+    {% csrf_token %}
+    <input type="password" name="new_password1" placeholder="Yeni Şifre" required>
+    <input type="password" name="new_password2" placeholder="Yeni Şifre (Tekrar)" required>
+    <button type="submit">Şifreyi Değiştir</button>
+</form>
+{% endblock %}

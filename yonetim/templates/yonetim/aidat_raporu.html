@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ site_adi }} - {{ ay_adi }} {{ yil }} Rapor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #1e3c72;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #1e3c72;
+            color: white;
+        }
+        .total {
+            background-color: #e8f4e8;
+            font-weight: bold;
+        }
+        .deadline {
+            background-color: #fff3cd;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .bank-info {
+            background-color: #e8f4f8;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .buttons {
+            text-align: center;
+            margin-top: 30px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+        }
+        @media print {
+            .buttons {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ site_adi }}</h1>
+        <h2>YAKIT VE AİDAT ÖDEMELERİ</h2>
+        <h3>{{ ay_adi }} {{ yil }}</h3>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>DAİRELER</th>
+                <th>AİDAT (TL)</th>
+                <th>YAKIT (TL)</th>
+                <th>TOPLAM (TL)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for daire in daireler %}
+            <tr>
+                <td>{{ daire.blok }}-{{ daire.daire_no }} ({{ daire.daire_tipi }})</td>
+                <td>{{ daire.aidat|floatformat:2 }}</td>
+                <td>{{ daire.yakit|floatformat:2 }}</td>
+                <td><strong>{{ daire.toplam|floatformat:2 }}</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total">
+                <td><strong>TOPLAM</strong></td>
+                <td><strong>{{ toplam_aidat|floatformat:2 }}</strong></td>
+                <td><strong>{{ toplam_yakit|floatformat:2 }}</strong></td>
+                <td><strong>{{ toplam_genel|floatformat:2 }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    
+    <div class="deadline">
+        ⚠️ ÖDEMELERİN EN GEÇ {{ odeme_tarihi }} TARİHİNE KADAR YAPILMASI ÖNEMLE RİCA OLUNUR.
+    </div>
+    
+    <div class="bank-info">
+        <strong>HESAP ADI:</strong> {{ banka_adi }}<br>
+        <strong>IBAN NO:</strong> {{ iban }}
+    </div>
+    
+    <div class="buttons">
+        <button onclick="window.print()">🖨️ YAZDIR / PDF KAYDET</button>
+    </div>
+</body>
+</html>

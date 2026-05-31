@@ -1,0 +1,255 @@
+{% extends "admin/base_site.html" %}
+{% load numara_filtreleri %}
+
+{% block content %}
+<meta charset="UTF-8">
+
+<style media="print">
+    /* Yazdırmada gereksiz alanları gizle */
+    .main-sidebar, .sidebar, .main-header, .navbar, 
+    footer, .main-footer, .breadcrumb, .card-header, 
+    .card-tools, .btn, button, .small-box, .info-box,
+    [class*="sidebar"], [class*="main-sidebar"],
+    form, .filters {
+        display: none !important;
+    }
+    
+    /* Ana içerik tam genişlik */
+    .content-wrapper, .main-content, #content {
+        margin-left: 0 !important;
+        padding: 10px !important;
+        width: 100% !important;
+    }
+    
+    /* Tablo stilleri */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+    th, td {
+        border: 1px solid black !important;
+        padding: 8px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2 !important;
+    }
+    .text-right {
+        text-align: right;
+    }
+    
+    /* Sayfa düzeni */
+    @page {
+        margin: 0.5cm;
+        size: landscape;
+    }
+    
+    /* Print başlığı */
+    .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .print-header h2 {
+        margin: 0;
+        font-size: 18pt;
+    }
+    .print-header h3 {
+        margin: 5px 0;
+        font-size: 14pt;
+    }
+    .print-header .date {
+        font-size: 10pt;
+        color: #555;
+    }
+</style>
+
+<!-- NORMAL SAYFA GÖRÜNÜMÜ (ekranda) -->
+<div id="normalGorunum" style="padding: 20px;">
+    <h1>💰 Maaş Bordrosu Raporu</h1>
+    
+    <form method="get" style="margin-bottom: 20px;">
+        <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <select name="yil" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                {% for y in yillar %}
+                <option value="{{ y }}" {% if yil == y %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            <select name="ay" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">Tüm Yıl</option>
+                {% for a in aylar %}
+                <option value="{{ a.0 }}" {% if ay == a.0 %}selected{% endif %}>{{ a.1 }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" style="background: #17a2b8; color: white; border: none; padding: 6px 20px; border-radius: 4px; cursor: pointer;">🔍 Filtrele</button>
+        </div>
+    </form>
+    
+    <!-- Dönem Bilgisi -->
+    <div style="background: #e8f4f8; padding: 10px; margin-bottom: 20px; border-radius: 5px; border-left: 4px solid #1e3c72;">
+        <strong>📅 Dönem:</strong> {{ donem }}
+    </div>
+    
+    <!-- Tablo - Yatay kaydırma için container -->
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 1200px;">
+            <thead>
+                <tr style="background: #1e3c72; color: white;">
+                    <th style="padding: 10px;">Personel</th>
+                    <th style="padding: 10px;">Ay</th>
+                    <th style="padding: 10px;">Yıl</th>
+                    <th style="padding: 10px;">Brüt Maaş</th>
+                    <th style="padding: 10px;">Fazla Mesai</th>
+                    <th style="padding: 10px;">Resmi Tatil</th>
+                    <th style="padding: 10px;">Bayram</th>
+                    <th style="padding: 10px;">Prim</th>
+                    <th style="padding: 10px;">Toplam Brüt</th>
+                    <th style="padding: 10px;">SGK İşçi</th>
+                    <th style="padding: 10px;">İşsizlik</th>
+                    <th style="padding: 10px;">Gelir Vergisi</th>
+                    <th style="padding: 10px;">Damga Vergisi</th>
+                    <th style="padding: 10px;">Toplam Kesinti</th>
+                    <th style="padding: 10px;">Net Maaş</th>
+                    <th style="padding: 10px;">SGK İşveren</th>
+                    <th style="padding: 10px;">İşsizlik İsv</th>
+                    <th style="padding: 10px;">İşveren Maliyet</th>
+                <tr>
+            </thead>
+            <tbody>
+                {% for bordro in bordrolar %}
+                <tr>
+                    <td style="padding: 8px;">{{ bordro.personel.ad_soyad }}</td>
+                    <td style="padding: 8px;">
+                        {% if bordro.ay == 1 %}Ocak
+                        {% elif bordro.ay == 2 %}Şubat
+                        {% elif bordro.ay == 3 %}Mart
+                        {% elif bordro.ay == 4 %}Nisan
+                        {% elif bordro.ay == 5 %}Mayıs
+                        {% elif bordro.ay == 6 %}Haziran
+                        {% elif bordro.ay == 7 %}Temmuz
+                        {% elif bordro.ay == 8 %}Ağustos
+                        {% elif bordro.ay == 9 %}Eylül
+                        {% elif bordro.ay == 10 %}Ekim
+                        {% elif bordro.ay == 11 %}Kasım
+                        {% elif bordro.ay == 12 %}Aralık
+                        {% endif %}
+                    </td>
+                    <td style="padding: 8px;">{{ bordro.yil }}</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.brut_maas|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.fazla_mesai_tutari|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.resmi_tatil_tutari|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.bayram_tutari|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.prim|para }} TL</td>
+                    <td style="padding: 8px; text-align: right; font-weight: bold;">{{ bordro.brut_maas|add:bordro.fazla_mesai_tutari|add:bordro.resmi_tatil_tutari|add:bordro.bayram_tutari|add:bordro.prim|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.sgk_isci_payi|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.issizlik_isci_payi|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.gelir_vergisi|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.damga_vergisi|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.toplam_kesinti|para }} TL</td>
+                    <td style="padding: 8px; text-align: right; font-weight: bold; background: #d4edda;">{{ bordro.net_maas|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.sgk_isveren_payi|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.issizlik_isveren_payi|para }} TL</td>
+                    <td style="padding: 8px; text-align: right;">{{ bordro.isveren_toplam_maliyet|para }} TL</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="18" style="text-align: center;">Bu dönemde bordro kaydı bulunmamaktadır.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: #e9ecef; font-weight: bold;">
+                    <td colspan="3">TOPLAM</td>
+                    <td style="text-align: right;">{{ toplam_brut|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_fazla_mesai|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_tatil|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_bayram|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_prim|para }} TL</td>
+                    <td style="text-align: right;">---</td>
+                    <td style="text-align: right;">{{ toplam_sgk|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_issizlik|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_vergi|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_damga|para }} TL</td>
+                    <td style="text-align: right;">---</td>
+                    <td style="text-align: right; font-weight: bold;">{{ toplam_net|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_sgk_isveren|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_issizlik_isveren|para }} TL</td>
+                    <td style="text-align: right;">{{ toplam_maliyet|para }} TL</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    
+    <!-- İHRACAT BUTONLARI -->
+    <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <button onclick="exportToExcel()" style="background: #28a745; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer;">📊 Excel Olarak İndir</button>
+        <button onclick="exportToCSV()" style="background: #17a2b8; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer;">📄 CSV Olarak İndir</button>
+        <button onclick="temizYazdir()" style="background: #dc3545; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer;">🖨️ Yazdır / PDF Kaydet</button>
+    </div>
+</div>
+
+<script>
+function exportToExcel() {
+    var table = document.querySelector('table');
+    var fullHtml = '<html><head><meta charset="UTF-8"><title>Maaş Bordrosu Raporu</title></head><body>' +
+                   '<h2>Maaş Bordrosu Raporu</h2><h3>Dönem: {{ donem }}</h3><hr>' + table.outerHTML + '</body></html>';
+    var blob = new Blob(["\uFEFF" + fullHtml], {type: 'application/vnd.ms-excel'});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Maaş_Bordrosu_{{ donem }}.xls';
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+function exportToCSV() {
+    var table = document.querySelector('table');
+    var rows = table.querySelectorAll('tr');
+    var csvContent = "Maaş Bordrosu Raporu,{{ donem }}\n\n";
+    rows.forEach(function(row) {
+        var rowData = [];
+        row.querySelectorAll('th, td').forEach(function(col) {
+            var text = col.innerText.replace(/"/g, '""');
+            rowData.push('"' + text + '"');
+        });
+        csvContent += rowData.join(',') + "\n";
+    });
+    var blob = new Blob(["\uFEFF" + csvContent], {type: 'text/csv;charset=utf-8;'});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Maaş_Bordrosu_{{ donem }}.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+function temizYazdir() {
+    var baslik = '<div class="print-header" style="text-align: center; margin-bottom: 20px;">';
+    baslik += '<h2 style="margin: 0;">Sefa-3 Sitesi</h2>';
+    baslik += '<h3 style="margin: 5px 0;">Maaş Bordrosu Raporu</h3>';
+    baslik += '<div style="font-size: 10pt; color: #555;">{{ donem }} - ' + new Date().toLocaleDateString('tr-TR') + ' ' + new Date().toLocaleTimeString('tr-TR') + '</div>';
+    baslik += '</div>';
+    
+    var tablo = document.querySelector('table').cloneNode(true);
+    
+    var yeniSayfa = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Maaş Bordrosu Raporu</title>';
+    yeniSayfa += '<style>';
+    yeniSayfa += 'body { margin: 20px; padding: 0; font-family: Arial, sans-serif; }';
+    yeniSayfa += 'table { width: 100%; border-collapse: collapse; margin: 20px 0; }';
+    yeniSayfa += 'th, td { border: 1px solid black; padding: 8px; text-align: left; }';
+    yeniSayfa += 'th { background-color: #f2f2f2; }';
+    yeniSayfa += '.text-right { text-align: right; }';
+    yeniSayfa += '@media print { @page { margin: 0.5cm; size: landscape; } }';
+    yeniSayfa += '</style>';
+    yeniSayfa += '</head><body>';
+    yeniSayfa += baslik;
+    yeniSayfa += tablo.outerHTML;
+    yeniSayfa += '</body></html>';
+    
+    var yaziPencere = window.open();
+    yaziPencere.document.write(yeniSayfa);
+    yaziPencere.document.close();
+    yaziPencere.print();
+}
+</script>
+
+{% endblock %}

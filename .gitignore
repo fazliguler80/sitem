@@ -1,0 +1,21 @@
+# Sanal ortam
+myenv/
+
+# Python önbellek dosyaları
+__pycache__/
+*.pyc
+*.pyo
+
+# Veritabanı
+db.sqlite3
+
+# Statik ve medya dosyaları
+staticfiles/
+media/
+
+# Log dosyaları
+*.log
+
+# IDE dosyaları
+.vscode/
+.idea/

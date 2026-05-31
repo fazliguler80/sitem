@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div style="padding: 20px; max-width: 500px;">
+    <h2>🔑 Şifre Belirle: {{ obj.kisi.ad_soyad }}</h2>
+    <p>Kullanıcı adı: <strong>{{ obj.kullanici.username }}</strong></p>
+    <form method="post">
+        {% csrf_token %}
+        <div style="margin-bottom: 15px;">
+            <label>Yeni Şifre:</label>
+            <input type="text" name="yeni_sifre" class="vTextField" style="width:100%; padding:8px;" required>
+            <small>Şifreyi not alıp kullanıcıya iletin.</small>
+        </div>
+        <button type="submit" style="background:#28a745; color:white; padding:10px 20px; border:none; border-radius:5px;">Şifreyi Kaydet</button>
+        <a href="../" style="margin-left:10px;">İptal</a>
+    </form>
+</div>
+{% endblock %}

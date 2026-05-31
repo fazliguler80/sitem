@@ -1,0 +1,16 @@
+/* Banka Hareketleri sayfası için ek stiller */
+.content-wrapper {
+    transition: margin-left 0.3s ease;
+}
+
+/* Sidebar gizlendiğinde içerik tam genişlesin */
+body.sidebar-collapse .content-wrapper {
+    margin-left: 0 !important;
+}
+
+/* Özet kartları ortalı ve alt kısımda */
+.özet-kartlar {
+    justify-content: center;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}

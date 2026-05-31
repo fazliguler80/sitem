@@ -1,0 +1,198 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+
+<!-- NORMAL SAYFA GÖRÜNÜMÜ (ekranda) -->
+<div id="normalGorunum" style="padding: 20px;">
+    <h1>{{ title }}</h1>
+    
+    <!-- İstatistik Kartları -->
+    <div id="istatistikKartlari" style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
+        <div style="flex: 1; background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+            <h3>🏢 Toplam Blok</h3>
+            <h2 style="font-size: 36px;">{{ toplam_blok }}</h2>
+        </div>
+        <div style="flex: 1; background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+            <h3>🏠 Toplam Daire</h3>
+            <h2 style="font-size: 36px;">{{ toplam_daire }}</h2>
+        </div>
+        <div style="flex: 1; background: linear-gradient(135deg, #17a2b8, #00bcd4); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+            <h3>👥 Toplam Kişi</h3>
+            <h2 style="font-size: 36px;">{{ toplam_kisi }}</h2>
+        </div>
+    </div>
+    
+    <!-- Mali Durum -->
+    <div id="maliDurum" style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
+        <div style="flex: 1; background: #d4edda; padding: 20px; border-radius: 10px;">
+            <h3>💰 Toplam Bakiye</h3>
+            <h2 style="color: #155724;">{{ toplam_bakiye|floatformat:2 }} TL</h2>
+            <hr>
+            <h3>📈 Ödenmemiş Aidat</h3>
+            <h2 style="color: #dc3545;">{{ odenmemis_aidat|floatformat:2 }} TL</h2>
+            <hr>
+            <h3>🏦 Toplam Depozito</h3>
+            <h2 style="color: #fd7e14;">{{ depozitolar|floatformat:2 }} TL</h2>
+        </div>
+        <div style="flex: 1; background: #d1ecf1; padding: 20px; border-radius: 10px;">
+            <h3>📊 Yıllık Gelir/Gider ({{ yil|default:2026 }})</h3>
+            <hr>
+            <p><strong>Gelir:</strong> <span style="color: green;">{{ yillik_gelir|floatformat:2 }} TL</span></p>
+            <p><strong>Gider:</strong> <span style="color: red;">{{ yillik_gider|floatformat:2 }} TL</span></p>
+            <p><strong>Net:</strong> 
+                <span style="color: {% if yillik_net >= 0 %}green{% else %}red{% endif %}; font-weight: bold;">
+                    {{ yillik_net|floatformat:2 }} TL
+                </span>
+            </p>
+        </div>
+    </div>
+    
+    <!-- Banka Hesapları -->
+    <h2>🏦 Banka / Nakit Hesapları</h2>
+    <table id="bankaTablosu" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+            <tr style="background: #1e3c72; color: white;">
+                <th style="padding: 10px; border: 1px solid #ddd;">Hesap Adı</th>
+                <th style="padding: 10px; border: 1px solid #ddd;">Hesap Tipi</th>
+                <th style="padding: 10px; border: 1px solid #ddd;">IBAN</th>
+                <th style="padding: 10px; border: 1px solid #ddd;">Güncel Bakiye (TL)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for b in bankalar %}
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">{{ b.hesap_adi }}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{{ b.get_hesap_tipi_display }}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{{ b.iban|default:"-" }}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; {% if b.guncel_bakiye < 0 %}color: red;{% else %}color: green;{% endif %} font-weight: bold;">
+                    {{ b.guncel_bakiye|floatformat:2 }}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 20px;">Henüz banka hesabı eklenmemiş.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Özet -->
+    <div id="genelDegerlendirme" style="background: #e9ecef; padding: 15px; border-radius: 10px; margin-top: 20px;">
+        <h3>📋 Genel Değerlendirme</h3>
+        <ul style="line-height: 1.8;">
+            <li>✅ <strong>Toplam Konut:</strong> {{ toplam_daire }} daire</li>
+            <li>💰 <strong>Toplam Bakiye:</strong> {{ toplam_bakiye|floatformat:2 }} TL</li>
+            <li>⚠️ <strong>Gecikmiş Aidat:</strong> {{ odenmemis_aidat|floatformat:2 }} TL</li>
+            <li>🏦 <strong>Toplam Depozito:</strong> {{ depozitolar|floatformat:2 }} TL</li>
+            <li>📊 <strong>Bu Yıl Net Durum:</strong> 
+                {% if yillik_net >= 0 %}
+                    <span style="color: green;">+{{ yillik_net|floatformat:2 }} TL (Kâr)</span>
+                {% else %}
+                    <span style="color: red;">{{ yillik_net|floatformat:2 }} TL (Zarar)</span>
+                {% endif %}
+            </li>
+        </ul>
+    </div>
+    
+    <div style="margin-top: 30px;">
+        <button onclick="temizYazdir()" style="padding: 10px 20px; background: #1e3c72; color: white; border: none; border-radius: 5px; cursor: pointer;">🖨️ Yazdır / PDF Kaydet</button>
+    </div>
+</div>
+
+<script>
+function temizYazdir() {
+    // Verileri al
+    var toplamBlok = "{{ toplam_blok }}";
+    var toplamDaire = "{{ toplam_daire }}";
+    var toplamKisi = "{{ toplam_kisi }}";
+    var toplamBakiye = "{{ toplam_bakiye|floatformat:2 }}";
+    var odenmemisAidat = "{{ odenmemis_aidat|floatformat:2 }}";
+    var depozitolar = "{{ depozitolar|floatformat:2 }}";
+    var yil = "{{ yil|default:2026 }}";
+    var yillikGelir = "{{ yillik_gelir|floatformat:2 }}";
+    var yillikGider = "{{ yillik_gider|floatformat:2 }}";
+    var yillikNet = "{{ yillik_net|floatformat:2 }}";
+    var netRenk = parseFloat(yillikNet) >= 0 ? 'green' : 'red';
+    var netIsaret = parseFloat(yillikNet) >= 0 ? '+' : '';
+    
+    // Banka tablosunu al
+    var bankaTablosu = document.getElementById('bankaTablosu').cloneNode(true);
+    
+    // Yeni sayfa oluştur
+    var yeniSayfa = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Genel Durum Raporu</title>';
+    yeniSayfa += '<style>';
+    yeniSayfa += 'body { margin: 20px; padding: 0; font-family: Arial, sans-serif; }';
+    yeniSayfa += '.print-header { text-align: center; margin-bottom: 20px; }';
+    yeniSayfa += '.print-header h2 { margin: 0; font-size: 18pt; }';
+    yeniSayfa += '.print-header h3 { margin: 5px 0; font-size: 14pt; }';
+    yeniSayfa += '.print-header .date { font-size: 10pt; color: #555; margin-top: 5px; }';
+    yeniSayfa += '.kartlar { display: flex; gap: 20px; margin: 20px 0; flex-wrap: wrap; }';
+    yeniSayfa += '.kart { flex: 1; padding: 15px; text-align: center; border: 1px solid #ccc; }';
+    yeniSayfa += '.kart h3 { margin: 0 0 10px 0; }';
+    yeniSayfa += '.kart h2 { margin: 0; font-size: 24px; }';
+    yeniSayfa += '.mali-kart { flex: 1; padding: 15px; border: 1px solid #ccc; }';
+    yeniSayfa += '.mali-kart hr { margin: 10px 0; }';
+    yeniSayfa += 'table { width: 100%; border-collapse: collapse; margin: 20px 0; }';
+    yeniSayfa += 'th, td { border: 1px solid black; padding: 8px; text-align: left; }';
+    yeniSayfa += 'th { background-color: #f2f2f2; }';
+    yeniSayfa += '.degerlendirme { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }';
+    yeniSayfa += '.text-green { color: green; }';
+    yeniSayfa += '.text-red { color: red; }';
+    yeniSayfa += '@media print { @page { margin: 0.5cm; } }';
+    yeniSayfa += '</style>';
+    yeniSayfa += '</head><body>';
+    
+    // Print başlığı
+    yeniSayfa += '<div class="print-header">';
+    yeniSayfa += '<h2>Sefa-3 Sitesi</h2>';
+    yeniSayfa += '<h3>Genel Durum Raporu</h3>';
+    yeniSayfa += '<div class="date">' + new Date().toLocaleDateString('tr-TR') + ' ' + new Date().toLocaleTimeString('tr-TR') + '</div>';
+    yeniSayfa += '</div>';
+    
+    // İstatistik kartları
+    yeniSayfa += '<div class="kartlar">';
+    yeniSayfa += '<div class="kart"><h3>🏢 Toplam Blok</h3><h2>' + toplamBlok + '</h2></div>';
+    yeniSayfa += '<div class="kart"><h3>🏠 Toplam Daire</h3><h2>' + toplamDaire + '</h2></div>';
+    yeniSayfa += '<div class="kart"><h3>👥 Toplam Kişi</h3><h2>' + toplamKisi + '</h2></div>';
+    yeniSayfa += '</div>';
+    
+    // Mali durum
+    yeniSayfa += '<div class="kartlar">';
+    yeniSayfa += '<div class="mali-kart">';
+    yeniSayfa += '<h3>💰 Toplam Bakiye</h3><h2>' + toplamBakiye + ' TL</h2><hr>';
+    yeniSayfa += '<h3>📈 Ödenmemiş Aidat</h3><h2>' + odenmemisAidat + ' TL</h2><hr>';
+    yeniSayfa += '<h3>🏦 Toplam Depozito</h3><h2>' + depozitolar + ' TL</h2>';
+    yeniSayfa += '</div>';
+    yeniSayfa += '<div class="mali-kart">';
+    yeniSayfa += '<h3>📊 Yıllık Gelir/Gider (' + yil + ')</h3><hr>';
+    yeniSayfa += '<p><strong>Gelir:</strong> ' + yillikGelir + ' TL</p>';
+    yeniSayfa += '<p><strong>Gider:</strong> ' + yillikGider + ' TL</p>';
+    yeniSayfa += '<p><strong>Net:</strong> <span class="' + (parseFloat(yillikNet) >= 0 ? 'text-green' : 'text-red') + '">' + netIsaret + yillikNet + ' TL</span></p>';
+    yeniSayfa += '</div></div>';
+    
+    // Banka tablosu
+    yeniSayfa += '<h3>🏦 Banka / Nakit Hesapları</h3>';
+    yeniSayfa += bankaTablosu.outerHTML;
+    
+    // Genel değerlendirme
+    yeniSayfa += '<div class="degerlendirme">';
+    yeniSayfa += '<h3>📋 Genel Değerlendirme</h3>';
+    yeniSayfa += '<ul>';
+    yeniSayfa += '<li>✅ <strong>Toplam Konut:</strong> ' + toplamDaire + ' daire</li>';
+    yeniSayfa += '<li>💰 <strong>Toplam Bakiye:</strong> ' + toplamBakiye + ' TL</li>';
+    yeniSayfa += '<li>⚠️ <strong>Gecikmiş Aidat:</strong> ' + odenmemisAidat + ' TL</li>';
+    yeniSayfa += '<li>🏦 <strong>Toplam Depozito:</strong> ' + depozitolar + ' TL</li>';
+    yeniSayfa += '<li>📊 <strong>Bu Yıl Net Durum:</strong> <span class="' + netRenk + '">' + netIsaret + yillikNet + ' TL (' + (parseFloat(yillikNet) >= 0 ? 'Kâr' : 'Zarar') + ')</span></li>';
+    yeniSayfa += '</ul>';
+    yeniSayfa += '</div>';
+    
+    yeniSayfa += '</body></html>';
+    
+    // Yeni pencere aç ve yazdır
+    var yaziPencere = window.open();
+    yaziPencere.document.write(yeniSayfa);
+    yaziPencere.document.close();
+    yaziPencere.print();
+}
+</script>
+
+{% endblock %}

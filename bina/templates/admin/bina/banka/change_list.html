@@ -1,0 +1,73 @@
+{% extends "admin/change_list.html" %}
+{% load numara_filtreleri %}
+
+{% block content %}
+    {{ block.super }}
+
+    {% if toplam_bakiye is not None %}
+    <div class="toplam-mevduat-card">
+        <div class="card-left">
+            <span class="card-icon">₺</span>
+            <span class="card-title">Toplam Mevduat</span>
+        </div>
+        <div class="card-amount">{{ toplam_bakiye|para }} TL</div>
+    </div>
+    {% endif %}
+
+    <style>
+        .toplam-mevduat-card {
+            margin-top: 25px;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            border-radius: 15px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .toplam-mevduat-card:hover {
+            transform: translateY(-3px);
+        }
+        .card-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .card-icon {
+            font-size: 42px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.2);
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-family: monospace;
+        }
+        .card-title {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .card-amount {
+            font-size: 28px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.15);
+            padding: 8px 20px;
+            border-radius: 40px;
+        }
+        @media (max-width: 768px) {
+            .toplam-mevduat-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+            .card-left {
+                justify-content: center;
+            }
+        }
+    </style>
+{% endblock %}

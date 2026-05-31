@@ -1,0 +1,40 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h2>📅 Aidat Geçmişi - {{ daire }}</h2>
+
+<div style="display: flex; gap: 20px; margin-bottom: 20px;">
+    <div style="flex:1; background: #d4edda; padding: 15px; border-radius: 10px;">
+        <h3>✅ Ödenen Toplam</h3>
+        <p style="font-size: 24px;">{{ toplam_odenen|floatformat:2 }} TL</p>
+    </div>
+    <div style="flex:1; background: #f8d7da; padding: 15px; border-radius: 10px;">
+        <h3>❌ Kalan Borç</h3>
+        <p style="font-size: 24px;">{{ toplam_borc|floatformat:2 }} TL</p>
+    </div>
+</div>
+
+<table style="width:100%; border-collapse: collapse;">
+    <thead>
+        <tr style="background: #1e3c72; color: white;">
+            <th>Dönem</th>
+            <th>Açıklama</th>
+            <th>Tutar</th>
+            <th>Durum</th>
+            <th>Ödeme Tarihi</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for aidat in aidatlar %}
+        <tr>
+            <td>{{ aidat.ay }}/{{ aidat.yil }}</td>
+            <td>{{ aidat.aciklama|default:"-" }}</td>
+            <td>{{ aidat.tutar|floatformat:2 }} TL</td>
+            <td>{% if aidat.odendi_mi %}✅ Ödendi{% else %}❌ Ödenmedi{% endif %}</td>
+            <td>{{ aidat.odeme_tarihi|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Aidat kaydı bulunmamaktadır.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

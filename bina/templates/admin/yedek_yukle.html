@@ -1,0 +1,51 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div style="padding: 20px;">
+    <h1>💾 Yedekten Veritabanı Yükle</h1>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div style="padding: 10px; margin-bottom: 20px; border-radius: 5px; 
+                        {% if message.tags == 'error' %}background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+                        {% else %}background: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    {% if success %}
+    <script>
+        setTimeout(function() {
+            window.location.href = '/admin/';
+        }, 2000);
+    </script>
+    {% endif %}
+    
+    <form method="post" enctype="multipart/form-data" style="margin-top: 20px;">
+        {% csrf_token %}
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-weight: bold;">📁 Yedek Dosyası (.zip):</label>
+            <input type="file" name="yedek_dosya" accept=".zip" required style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%;">
+            <small style="color: #666;">Sistem tarafından oluşturulan .zip yedek dosyasını seçin.</small>
+        </div>
+        
+        <div style="margin-bottom: 20px; background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
+            <strong>⚠️ Uyarı:</strong>
+            <ul style="margin: 10px 0 0 20px;">
+                <li>Bu işlem mevcut veritabanınızı tamamen değiştirecektir!</li>
+                <li>Yükleme öncesinde mevcut veritabanının yedeği otomatik alınır.</li>
+                <li>İşlem tamamlandıktan sonra sayfa yenilenecektir.</li>
+            </ul>
+        </div>
+        
+        <div style="display: flex; gap: 15px;">
+            <button type="submit" style="background: #dc3545; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer;">
+                📤 Yedekten Yükle
+            </button>
+            <a href="/admin/" style="background: #6c757d; color: white; border: none; padding: 12px 25px; border-radius: 5px; text-decoration: none;">
+                ❌ İptal
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

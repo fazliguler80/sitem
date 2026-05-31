@@ -1,0 +1,45 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h2>🏘️ Komşular - {{ secili_blok }} Blok</h2>
+
+<div style="margin-bottom: 20px;">
+    <label>Blok Seçin:</label>
+    <select onchange="window.location.href='/portal/komsular/'+this.value">
+        <option value="">Blok Seçin</option>
+        {% for blok in bloklar %}
+        <option value="{{ blok }}" {% if secili_blok == blok %}selected{% endif %}>{{ blok }} Blok</option>
+        {% endfor %}
+    </select>
+</div>
+
+<table style="width:100%; border-collapse: collapse;">
+    <thead>
+        <tr style="background: #1e3c72; color: white;">
+            <th>Daire No</th>
+            <th>Sakin(ler)</th>
+            <th>Telefon</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for komsu in komsular %}
+        <tr>
+            <td>{{ komsu.daire_no }}</td>
+            <td>
+                {% for sakin in komsu.sakinler %}
+                    {{ sakin.ad_soyad }} ({{ sakin.iliskisi }})<br>
+                {% empty %}
+                    -
+                {% endfor %}
+            </td>
+            <td>
+                {% for sakin in komsu.sakinler %}
+                    {{ sakin.telefon }}<br>
+                {% endfor %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">Bu blokta kayıtlı daire bulunmamaktadır.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

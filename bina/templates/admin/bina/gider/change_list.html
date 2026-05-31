@@ -1,0 +1,8 @@
+{% extends "admin/change_list.html" %}
+{% block content %}
+<div style="margin-bottom: 20px; padding: 15px; background: #f8d7da; border-left: 5px solid #dc3545;">
+    <h3 style="margin:0">📉 Toplam Gider</h3>
+    <p style="font-size: 24px; font-weight: bold; margin:5px 0 0">{{ toplam_gider|floatformat:2 }} TL</p>
+</div>
+{{ block.super }}
+{% endblock %}

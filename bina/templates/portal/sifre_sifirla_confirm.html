@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Yeni Şifre Belirle</title>
+    <style>
+        body { font-family: Arial; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 5px; cursor: pointer; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 Yeni Şifre Belirle</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="password" name="new_password1" placeholder="Yeni Şifre" required>
+            <input type="password" name="new_password2" placeholder="Yeni Şifre (Tekrar)" required>
+            <button type="submit">Şifreyi Değiştir</button>
+        </form>
+    </div>
+</body>
+</html>

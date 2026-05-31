@@ -1,0 +1,18 @@
+{% extends "admin/change_list.html" %}
+{% block content %}
+<div style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+    <div style="flex:1; background:#d4edda; padding:10px; border-radius:5px">
+        <h3>💰 Alınan Depozito</h3>
+        <p style="font-size:20px">{{ alinan_depozito|floatformat:2 }} TL</p>
+    </div>
+    <div style="flex:1; background:#f8d7da; padding:10px; border-radius:5px">
+        <h3>↩️ İade Edilen</h3>
+        <p style="font-size:20px">{{ iade_depozito|floatformat:2 }} TL</p>
+    </div>
+    <div style="flex:1; background:#d1ecf1; padding:10px; border-radius:5px">
+        <h3>⚖️ Net Depozito</h3>
+        <p style="font-size:20px">{{ net_depozito|floatformat:2 }} TL</p>
+    </div>
+</div>
+{{ block.super }}
+{% endblock %}

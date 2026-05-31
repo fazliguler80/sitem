@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Hoş Geldiniz</h1>
+<div class="row">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <h5>Bloklar</h5>
+                <h2>{{ toplam_blok }}</h2>
+                <a href="{% url 'blok_listesi' %}" class="btn btn-primary">Yönet</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <h5>Daireler</h5>
+                <h2>{{ toplam_daire }}</h2>
+                <a href="{% url 'blok_listesi' %}" class="btn btn-primary">Yönet</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <h5>Kişiler</h5>
+                <h2>{{ toplam_kisi }}</h2>
+                <a href="{% url 'kisi_listesi' %}" class="btn btn-primary">Yönet</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <h5>Ödenmemiş Aidatlar</h5>
+                <h2>{{ toplam_aidat }}</h2>
+                <a href="{% url 'aidat_listesi' %}" class="btn btn-primary">Yönet</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

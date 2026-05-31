@@ -1,0 +1,26 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h2>🔐 Zorunlu Şifre Değişikliği</h2>
+
+<div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+    ⚠️ İlk girişiniz veya şifreniz yönetici tarafından sıfırlanmıştır.<br>
+    Devam edebilmek için şifrenizi değiştirmelisiniz.
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div style="margin-bottom: 15px;">
+        <label>Mevcut Şifre:</label>
+        <input type="password" name="old_password" style="width:100%; padding:8px;" required>
+    </div>
+    <div style="margin-bottom: 15px;">
+        <label>Yeni Şifre:</label>
+        <input type="password" name="new_password1" style="width:100%; padding:8px;" required>
+    </div>
+    <div style="margin-bottom: 15px;">
+        <label>Yeni Şifre (Tekrar):</label>
+        <input type="password" name="new_password2" style="width:100%; padding:8px;" required>
+    </div>
+    <button type="submit" style="background: #28a745; color:white; padding:10px 20px; border:none; border-radius:5px;">Şifreyi Değiştir</button>
+</form>
+{% endblock %}

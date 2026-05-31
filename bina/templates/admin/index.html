@@ -1,0 +1,50 @@
+{% extends "admin/index.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div id="content-main">
+    <!-- Raporlar Bölümü -->
+    <div class="module" style="margin-bottom: 20px; background: #f0f8ff; border: 1px solid #1e3c72; border-radius: 8px;">
+        <table style="width: 100%;">
+            <caption>
+                <a href="{% url 'rapor_ana_sayfa' %}" class="section" style="background: #1e3c72; color: white; padding: 8px; display: block;">
+                    📊 RAPORLAR
+                </a>
+            </caption>
+            <tbody>
+                <tr>
+                    <th scope="row">
+                        <a href="{% url 'gelir_gider_raporu' %}">💵 Gelir - Gider Raporu</a>
+                    </th>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <a href="{% url 'banka_hareketleri_raporu' %}">🏦 Banka Hareketleri Raporu</a>
+                    </th>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <a href="{% url 'aidat_durumu_raporu' %}">💰 Aidat Durumu Raporu</a>
+                    </th>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <a href="{% url 'genel_durum_raporu' %}">📈 Genel Durum Raporu</a>
+                    </th>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Normal admin içeriği -->
+    {{ block.super }}
+</div>
+{% endblock %}

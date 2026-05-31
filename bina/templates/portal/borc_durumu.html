@@ -1,0 +1,30 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h2>💰 Borç Durumu - {{ daire }}</h2>
+
+<div style="background: #f8d7da; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+    <h3>Toplam Borcunuz</h3>
+    <p style="font-size: 32px; color: #dc3545;">{{ toplam_borc|floatformat:2 }} TL</p>
+</div>
+
+<table style="width:100%; border-collapse: collapse;">
+    <thead>
+        <tr style="background: #dc3545; color: white;">
+            <th>Dönem</th>
+            <th>Açıklama</th>
+            <th>Tutar</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for borc in borclar %}
+        <tr>
+            <td>{{ borc.ay }}/{{ borc.yil }}</td>
+            <td>{{ borc.aciklama|default:"-" }}</td>
+            <td>{{ borc.tutar|floatformat:2 }} TL</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">Borcunuz bulunmamaktadır.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

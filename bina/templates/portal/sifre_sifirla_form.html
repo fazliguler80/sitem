@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Şifre Sıfırla</title>
+    <style>
+        body { font-family: Arial; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #1e3c72; color: white; border: none; padding: 12px; width: 100%; border-radius: 5px; cursor: pointer; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 Şifre Sıfırla</h2>
+        <p>E-posta adresinizi girin, size şifre sıfırlama linki gönderelim.</p>
+        <form method="post">
+            {% csrf_token %}
+            <input type="email" name="email" placeholder="E-posta Adresiniz" required>
+            <button type="submit">Link Gönder</button>
+        </form>
+        <p style="margin-top: 15px;"><a href="/portal/login/">Giriş sayfasına dön</a></p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,147 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="#" onclick="showImportModal(); return false;" class="addlink" style="background: #28a745; padding: 8px 15px; border-radius: 4px; color: white; text-decoration: none; margin-left: 10px;">
+            📊 Excel'den İçe Aktar
+        </a>
+    </li>
+{% endblock %}
+
+{% block filters %}
+    {{ block.super }}
+    
+    <!-- Tarih Aralığı Filtresi -->
+    <div style="margin: 15px 0; padding: 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 5px;">
+        <h3 style="margin-top: 0; margin-bottom: 10px;">📅 Tarih Aralığına Göre Filtrele</h3>
+        <form method="get" id="tarih-aralik-form">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input type="date" name="tarih_baslangic" value="{{ request.GET.tarih_baslangic|default:'' }}" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                <span>-</span>
+                <input type="date" name="tarih_bitis" value="{{ request.GET.tarih_bitis|default:'' }}" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                <button type="submit" style="background: #007bff; color: white; border: none; padding: 6px 18px; border-radius: 4px; cursor: pointer;">🔍 Filtrele</button>
+                <button type="button" onclick="clearFilters()" style="background: #6c757d; color: white; border: none; padding: 6px 18px; border-radius: 4px; cursor: pointer;">🗑️ Temizle</button>
+            </div>
+            {% for key, value in request.GET.items %}
+                {% if key != 'tarih_baslangic' and key != 'tarih_bitis' %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+        </form>
+    </div>
+{% endblock %}
+
+{% block result_list %}
+    {{ block.super }}
+    
+    <!-- DÖNEM ÖZETİ - TABLONUN HEMEN ALTINDA, ORTALI -->
+    <div style="margin-top: 20px; margin-bottom: 20px; clear: both;">
+        <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+            <div style="flex: 0 1 250px; background: #d4edda; padding: 15px; border-radius: 10px; text-align: center; border-left: 4px solid #28a745;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px;">💰 Toplam Gelir</h3>
+                <p style="margin: 0; font-size: 20px; font-weight: bold; color: #155724;">{{ toplam_gelir|floatformat:2 }} TL</p>
+            </div>
+            <div style="flex: 0 1 250px; background: #f8d7da; padding: 15px; border-radius: 10px; text-align: center; border-left: 4px solid #dc3545;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px;">💸 Toplam Gider</h3>
+                <p style="margin: 0; font-size: 20px; font-weight: bold; color: #721c24;">{{ toplam_gider|floatformat:2 }} TL</p>
+            </div>
+            <div style="flex: 0 1 250px; background: #d1ecf1; padding: 15px; border-radius: 10px; text-align: center; border-left: 4px solid #17a2b8;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px;">⚖️ Net Bakiye</h3>
+                <p style="margin: 0; font-size: 20px; font-weight: bold; {% if net_bakiye < 0 %}color: #dc3545;{% else %}color: #28a745;{% endif %}">
+                    {{ net_bakiye|floatformat:2 }} TL
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block footer %}
+    {{ block.super }}
+    
+    <!-- Excel İçe Aktarma Modal -->
+    <div id="importModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 10px; width: 500px; max-width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 style="margin-top: 0; color: #1e3c72;">📊 Excel'den Banka Hareketi İçe Aktar</h3>
+            <hr>
+            <form id="importExcelForm" enctype="multipart/form-data" method="post">
+                {% csrf_token %}
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">🏦 Banka Hesabı:</label>
+                    <select name="banka" id="importBanka" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                        <option value="">-- Seçiniz --</option>
+                        {% for b in bankalar %}
+                        <option value="{{ b.id }}">{{ b.banka_adi }} - {{ b.hesap_adi }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📎 Excel Dosyası (.xlsx, .xls):</label>
+                    <input type="file" name="excel_dosya" accept=".xlsx,.xls" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                    <small style="color: #666; display: block; margin-top: 5px;">Excel formatında: tarih, tutar, aciklama sütunları olmalı</small>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" onclick="closeImportModal()" style="background: #6c757d; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">❌ İptal</button>
+                    <button type="submit" style="background: #28a745; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">📥 İçe Aktar</button>
+                </div>
+            </form>
+            <div id="importMessage" style="margin-top: 15px; text-align: center; font-size: 14px;"></div>
+        </div>
+    </div>
+    
+    <script>
+    function clearFilters() {
+        var form = document.getElementById('tarih-aralik-form');
+        var tarihInputs = form.querySelectorAll('input[type="date"]');
+        tarihInputs.forEach(function(input) { input.value = ''; });
+        form.submit();
+    }
+    
+    function showImportModal() { document.getElementById('importModal').style.display = 'block'; }
+    function closeImportModal() {
+        document.getElementById('importModal').style.display = 'none';
+        document.getElementById('importMessage').innerHTML = '';
+        document.getElementById('importExcelForm').reset();
+    }
+    
+    document.getElementById('importExcelForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        var messageDiv = document.getElementById('importMessage');
+        var submitBtn = this.querySelector('button[type="submit"]');
+        var originalText = submitBtn.innerHTML;
+        
+        messageDiv.innerHTML = '<span style="color: blue;">⏳ İçe aktarılıyor...</span>';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '⏳ İşleniyor...';
+        
+        fetch('/admin/bina/banka-hareket/import-excel/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                messageDiv.innerHTML = '<span style="color: green;">✅ ' + data.message + '</span>';
+                setTimeout(function() { location.reload(); }, 2000);
+            } else {
+                messageDiv.innerHTML = '<span style="color: red;">❌ ' + data.message + '</span>';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            messageDiv.innerHTML = '<span style="color: red;">❌ İşlem sırasında hata oluştu!</span>';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+    
+    window.onclick = function(event) {
+        var modal = document.getElementById('importModal');
+        if (event.target == modal) closeImportModal();
+    }
+    </script>
+{% endblock %}

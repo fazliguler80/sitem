@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div style="padding: 20px;">
+    <h1>📊 Raporlar Ana Sayfa</h1>
+    <p style="margin-bottom: 20px;">Hoş geldiniz! Aşağıdaki raporlardan birini seçin:</p>
+    
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
+            <h2>💰 Gelir - Gider</h2>
+            <p>Gelir ve gider tablolarını görüntüleyin</p>
+            <a href="/admin/raporlar/gelir-gider/" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Raporu Aç</a>
+        </div>
+        
+        <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
+            <h2>🏦 Banka Hareketleri</h2>
+            <p>Banka hesap hareketlerini görüntüleyin</p>
+            <a href="/admin/raporlar/banka-hareketleri/" style="background: #17a2b8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Raporu Aç</a>
+        </div>
+        
+        <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
+            <h2>📈 Aidat Durumu</h2>
+            <p>Daire bazlı aidat durumunu görüntüleyin</p>
+            <a href="/admin/raporlar/aidat-durumu/" style="background: #ffc107; color: #333; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Raporu Aç</a>
+        </div>
+        
+        <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
+            <h2>📋 Genel Durum</h2>
+            <p>Site genel durum istatistiklerini görüntüleyin</p>
+            <a href="/admin/raporlar/genel-durum/" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Raporu Aç</a>
+        </div>
+        
+        <!-- MAAŞ BORDROSU - EKLENDI -->
+        <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #dc3545;">
+            <h2>💰 Maaş Bordrosu</h2>
+            <p>Personel maaş bordrolarını görüntüleyin</p>
+            <a href="/admin/raporlar/maas-bordrosu/" style="background: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Raporu Aç</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    a:hover {
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}

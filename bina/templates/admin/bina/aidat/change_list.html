@@ -1,0 +1,25 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+    <!-- Özet Kartları (Tablonun Üstünde) -->
+    <div style="margin-bottom: 20px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 5px;">
+        <h3 style="margin-top: 0; margin-bottom: 15px;">📊 Aidat Özeti</h3>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="background: #d4edda; padding: 15px; border-radius: 8px; flex: 1; text-align: center; border-left: 4px solid #28a745;">
+                <h3 style="margin: 0 0 10px 0; font-size: 14px;">🏠 Toplam Aidat</h3>
+                <p style="margin: 0; font-size: 22px; font-weight: bold; color: #155724;">{{ toplam_aidat|floatformat:2 }} TL</p>
+            </div>
+            <div style="background: #d1ecf1; padding: 15px; border-radius: 8px; flex: 1; text-align: center; border-left: 4px solid #17a2b8;">
+                <h3 style="margin: 0 0 10px 0; font-size: 14px;">✅ Ödenen Aidat</h3>
+                <p style="margin: 0; font-size: 22px; font-weight: bold; color: #0c5460;">{{ toplam_odenmis|floatformat:2 }} TL</p>
+                <p style="margin: 5px 0 0 0; font-size: 14px;">({{ odenme_orani|floatformat:1 }}%)</p>
+            </div>
+            <div style="background: #f8d7da; padding: 15px; border-radius: 8px; flex: 1; text-align: center; border-left: 4px solid #dc3545;">
+                <h3 style="margin: 0 0 10px 0; font-size: 14px;">❌ Ödenmeyen Aidat</h3>
+                <p style="margin: 0; font-size: 22px; font-weight: bold; color: #721c24;">{{ toplam_odenmemis|floatformat:2 }} TL</p>
+            </div>
+        </div>
+    </div>
+    
+    {{ block.super }}
+{% endblock %}
