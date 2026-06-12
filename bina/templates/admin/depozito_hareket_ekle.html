@@ -1,0 +1,36 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 20px auto;">
+    <h2>🏦 Depozito Hareketi Ekle</h2>
+    <p><strong>Daire:</strong> {{ depozito.daire }}</p>
+    <p><strong>Mevcut Depozito:</strong> {{ depozito.tutar }} TL</p>
+    <p><strong>Güncel Bakiye (Hareketler Dahil):</strong> {{ guncel_bakiye }}</p>
+    
+    <hr>
+    
+    <form method="post" style="margin-top: 20px;">
+        {% csrf_token %}
+        
+        {% for field in form %}
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px;">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+            <div style="color: red;">{{ field.errors }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        <div style="margin-top: 20px;">
+            <button type="submit" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                ✅ Depozito Hareketi Ekle
+            </button>
+            <a href="{% url 'admin:bina_depozito_changelist' %}" style="margin-left: 10px; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px;">
+                ↩️ İptal
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

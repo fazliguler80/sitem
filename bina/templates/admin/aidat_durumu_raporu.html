@@ -1,211 +1,494 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
 
-<!-- NORMAL SAYFA GÖRÜNÜMÜ (ekranda) -->
-<div id="normalGorunum" style="padding: 20px;">
-    <h1>{{ title }}</h1>
+<style>
+    /* TABLO STİLLERİ */
+    #aidatTablosu {
+        width: 100%;
+        border-collapse: collapse;
+    }
     
-    <form method="get" style="margin-bottom: 20px;">
-        <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="submit" name="hizli_tarih" value="son7gun">📅 Son 7 Gün</button>
-            <button type="submit" name="hizli_tarih" value="son15gun">📅 Son 15 Gün</button>
-            <button type="submit" name="hizli_tarih" value="son30gun">📅 Son 30 Gün</button>
-            <button type="submit" name="hizli_tarih" value="son1ay">📅 Son 1 Ay</button>
-            <button type="submit" name="hizli_tarih" value="son3ay">📅 Son 3 Ay</button>
-            <button type="submit" name="hizli_tarih" value="son6ay">📅 Son 6 Ay</button>
-            <button type="submit" name="hizli_tarih" value="son1yil">📅 Son 1 Yıl</button>
-            <button type="button" onclick="clearQuickFilter()">🗑️ Temizle</button>
+    #aidatTablosu th {
+        padding: 10px;
+        border: 1px solid #ddd;
+        background: #1e3c72;
+        color: white;
+        text-align: center;
+    }
+    
+    #aidatTablosu td {
+        padding: 8px;
+        border: 1px solid #ddd;
+    }
+    
+    /* SAYILAR SAĞA HİZALI */
+    #aidatTablosu td:nth-child(3),
+    #aidatTablosu td:nth-child(4),
+    #aidatTablosu td:nth-child(5) {
+        text-align: right;
+    }
+    
+    /* DAİRE VE TİP SOLA HİZALI */
+    #aidatTablosu td:nth-child(1),
+    #aidatTablosu td:nth-child(2) {
+        text-align: left;
+    }
+    
+    /* DURUM SÜTUNU ORTALANMIŞ */
+    #aidatTablosu td:nth-child(6) {
+        text-align: center;
+    }
+    
+    /* DURUM ETİKETLERİ */
+    .durum-odendi {
+        background: #28a745;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 15px;
+        display: inline-block;
+        font-size: 12px;
+    }
+    .durum-odenmedi {
+        background: #dc3545;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 15px;
+        display: inline-block;
+        font-size: 12px;
+    }
+    
+    /* ÖZET KARTLARI */
+    .ozet-kart {
+        background: #f8f9fa;
+        padding: 15px;
+        text-align: center;
+        border-radius: 10px;
+        flex: 1;
+    }
+    .ozet-kartlar {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+    
+    /* FİLTRE FORM */
+    .filtre-form {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    /* BUTONLAR */
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        color: white;
+    }
+    .btn-excel { background: #28a745; }
+    .btn-csv { background: #17a2b8; }
+    .btn-print { background: #dc3545; }
+</style>
+
+<div style="max-width: 1400px; margin: 20px auto; padding: 0 20px;">
+    <h1 style="margin-bottom: 20px;">📊 Aidat Durumu Raporu</h1>
+    
+    <!-- Filtre Formu -->
+    <form method="get" class="filtre-form">
+        <!-- 1. SATIR: Hızlı Tarih ve Tarih Aralığı -->
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+            <button type="submit" name="hizli_tarih" value="son7gun" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Son 7 Gün</button>
+            <button type="submit" name="hizli_tarih" value="son15gun" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Son 15 Gün</button>
+            <button type="submit" name="hizli_tarih" value="son30gun" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Son 30 Gün</button>
+            <button type="submit" name="hizli_tarih" value="son3ay" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Son 3 Ay</button>
+            
+            <div style="display: flex; gap: 5px; align-items: center; margin-left: 10px;">
+                <label style="white-space: nowrap;">Tarih Aralığı:</label>
+                <input type="date" name="baslangic_tarih" value="{{ baslangic_tarih|default:'' }}" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <span>-</span>
+                <input type="date" name="bitis_tarih" value="{{ bitis_tarih|default:'' }}" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <button type="submit" name="tarih_ara" value="1" style="background: #28a745; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer;">Uygula</button>
         </div>
         
-        <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-            <label>📅 Tarih Aralığı:</label>
-            <input type="date" name="baslangic_tarih" value="{{ baslangic_tarih }}">
-            <span>-</span>
-            <input type="date" name="bitis_tarih" value="{{ bitis_tarih }}">
-            <button type="submit">✅ Uygula</button>
+        <!-- 2. SATIR: Yıl/Ay, Blok, Daire, Durum Filtreleri -->
+        <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+            <!-- Yıl -->
+            <div>
+                <label style="font-size: 12px; font-weight: bold;">Yıl</label>
+                <select name="yil" style="padding: 6px 30px 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">Tüm Yıllar</option>
+                    <option value="2024" {% if secili_yil == "2024" %}selected{% endif %}>2024</option>
+                    <option value="2025" {% if secili_yil == "2025" %}selected{% endif %}>2025</option>
+                    <option value="2026" {% if secili_yil == "2026" %}selected{% endif %}>2026</option>
+                </select>
+            </div>
+            
+            <!-- Ay -->
+            <div>
+                <label style="font-size: 12px; font-weight: bold;">Ay</label>
+                <select name="ay" style="padding: 6px 32px 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">Tüm Aylar</option>
+                    <option value="1" {% if secili_ay == "1" %}selected{% endif %}>Ocak</option>
+                    <option value="2" {% if secili_ay == "2" %}selected{% endif %}>Şubat</option>
+                    <option value="3" {% if secili_ay == "3" %}selected{% endif %}>Mart</option>
+                    <option value="4" {% if secili_ay == "4" %}selected{% endif %}>Nisan</option>
+                    <option value="5" {% if secili_ay == "5" %}selected{% endif %}>Mayıs</option>
+                    <option value="6" {% if secili_ay == "6" %}selected{% endif %}>Haziran</option>
+                    <option value="7" {% if secili_ay == "7" %}selected{% endif %}>Temmuz</option>
+                    <option value="8" {% if secili_ay == "8" %}selected{% endif %}>Ağustos</option>
+                    <option value="9" {% if secili_ay == "9" %}selected{% endif %}>Eylül</option>
+                    <option value="10" {% if secili_ay == "10" %}selected{% endif %}>Ekim</option>
+                    <option value="11" {% if secili_ay == "11" %}selected{% endif %}>Kasım</option>
+                    <option value="12" {% if secili_ay == "12" %}selected{% endif %}>Aralık</option>
+                </select>
+            </div>
+            
+            <!-- Blok -->
+            <div>
+                <label style="font-size: 12px; font-weight: bold;">Blok</label>
+                <select name="blok" id="blok_select" style="padding: 6px 30px 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">Tüm Bloklar</option>
+                    {% for blok in bloklar %}
+                    <option value="{{ blok.id }}" {% if secili_blok == blok.id|stringformat:"s" %}selected{% endif %}>
+                        {{ blok.get_blok_adi_display }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Daire -->
+            <div>
+                <label style="font-size: 12px; font-weight: bold;">Daire</label>
+                <select name="daire" id="daire_select" style="padding: 6px 35px 6px 8px; min-width: 120px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">Tüm Daireler</option>
+                    {% for daire in daireler %}
+                    <option value="{{ daire.id }}" {% if secili_daire == daire.id|stringformat:"s" %}selected{% endif %}>
+                        {{ daire.ad }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Durum -->
+            <div>
+                <label style="font-size: 12px; font-weight: bold;">Durum</label>
+                <select name="odeme_durumu" style="padding: 6px 35px 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">Tümü</option>
+                    <option value="odendi" {% if secili_durum == "odendi" %}selected{% endif %}>Ödendi</option>
+                    <option value="odenmedi" {% if secili_durum == "odenmedi" %}selected{% endif %}>Ödenmedi</option>
+                </select>
+            </div>
+            
+            <!-- Aidat Tipi -->
+            <div>
+                <label style="font-size: 12px; font-weight: bold;">Aidat Tipi</label>
+                <select name="aidat_tipi" style="padding: 6px 35px 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">Tümü</option>
+                    <option value="sabit" {% if secili_aidat_tipi == "sabit" %}selected{% endif %}>Sabit</option>
+                    <option value="ekstra" {% if secili_aidat_tipi == "ekstra" %}selected{% endif %}>Ekstra</option>
+                    <option value="yakıt" {% if secili_aidat_tipi == "yakıt" %}selected{% endif %}>Yakıt</option>
+                </select>
+            </div>
+            
+            <button type="submit" name="filtrele" value="1" style="background: #17a2b8; color: white; border: none; padding: 6px 20px; border-radius: 4px; cursor: pointer;">🔍 Filtrele</button>
         </div>
         
-        <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-            <label>📆 Yıl/Ay:</label>
-            <select name="yil">
-                <option value="2024" {% if yil == 2024 %}selected{% endif %}>2024</option>
-                <option value="2025" {% if yil == 2025 %}selected{% endif %}>2025</option>
-                <option value="2026" {% if yil == 2026 %}selected{% endif %}>2026</option>
-            </select>
-            <select name="ay">
-                <option value="">Tüm Yıl</option>
-                <option value="1" {% if ay == '1' %}selected{% endif %}>Ocak</option>
-                <option value="2" {% if ay == '2' %}selected{% endif %}>Şubat</option>
-                <option value="3" {% if ay == '3' %}selected{% endif %}>Mart</option>
-                <option value="4" {% if ay == '4' %}selected{% endif %}>Nisan</option>
-                <option value="5" {% if ay == '5' %}selected{% endif %}>Mayıs</option>
-                <option value="6" {% if ay == '6' %}selected{% endif %}>Haziran</option>
-                <option value="7" {% if ay == '7' %}selected{% endif %}>Temmuz</option>
-                <option value="8" {% if ay == '8' %}selected{% endif %}>Ağustos</option>
-                <option value="9" {% if ay == '9' %}selected{% endif %}>Eylül</option>
-                <option value="10" {% if ay == '10' %}selected{% endif %}>Ekim</option>
-                <option value="11" {% if ay == '11' %}selected{% endif %}>Kasım</option>
-                <option value="12" {% if ay == '12' %}selected{% endif %}>Aralık</option>
-            </select>
-            <button type="submit">🔍 Filtrele</button>
+        <!-- 3. SATIR: Butonlar -->
+        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+            <button type="submit" style="background: #28a745; color: white; border: none; padding: 8px 25px; border-radius: 5px; cursor: pointer;">🔍 Uygula</button>
+            <a href="{% url 'admin:aidat_durumu_raporu' %}" style="background: #dc3545; color: white; padding: 8px 25px; text-decoration: none; border-radius: 5px;">🗑️ Temizle</a>
         </div>
     </form>
     
-    <!-- Dönem Bilgisi (Bu kalacak) -->
-    <div id="donemBilgisi" style="background: #e8f4f8; padding: 10px; margin-bottom: 20px;">
+    <!-- Dönem Bilgisi -->
+    <div id="donemBilgisi" style="background: #e8f4f8; padding: 10px; margin-bottom: 20px; border-radius: 5px; border-left: 4px solid #1e3c72;">
         <strong>📅 Dönem:</strong> {{ donem }}
     </div>
     
     <!-- Özet Kartları -->
-    <div id="ozetKartlar" style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
-        <div style="flex: 1; background: #d4edda; padding: 15px; text-align: center;">
-            <h3 style="margin: 0 0 10px 0;">Toplam Aidat</h3>
+    <div class="ozet-kartlar">
+        <div class="ozet-kart" style="background: #d4edda;">
+            <h3 style="margin: 0 0 10px 0;">💰 Toplam Aidat</h3>
             <h2 style="margin: 0;">{{ toplam|floatformat:2 }} TL</h2>
         </div>
-        <div style="flex: 1; background: #d1ecf1; padding: 15px; text-align: center;">
-            <h3 style="margin: 0 0 10px 0;">Ödenen</h3>
+        <div class="ozet-kart" style="background: #d1ecf1;">
+            <h3 style="margin: 0 0 10px 0;">✅ Ödenen</h3>
             <h2 style="margin: 0;">{{ odenen|floatformat:2 }} TL</h2>
             <p style="margin: 5px 0 0 0;">({{ odenen_orani|floatformat:1 }}%)</p>
         </div>
-        <div style="flex: 1; background: #f8d7da; padding: 15px; text-align: center;">
-            <h3 style="margin: 0 0 10px 0;">Ödenmeyen</h3>
+        <div class="ozet-kart" style="background: #f8d7da;">
+            <h3 style="margin: 0 0 10px 0;">❌ Ödenmeyen</h3>
             <h2 style="margin: 0;">{{ odunmeyen|floatformat:2 }} TL</h2>
         </div>
     </div>
     
     <!-- Tablo -->
-    <h2 style="font-size: 16px; margin: 20px 0 10px 0;">Daire Bazlı Aidat Durumu</h2>
-    <table id="raporTablosu" style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr style="background: #1e3c72; color: white;">
-                <th style="padding: 10px;">Daire</th>
-                <th style="padding: 10px;">Daire Tipi</th>
-                <th style="padding: 10px;">Toplam Borç (TL)</th>
-                <th style="padding: 10px;">Ödenen (TL)</th>
-                <th style="padding: 10px;">Kalan (TL)</th>
-                <th style="padding: 10px;">Durum</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for daire in daire_durum %}
-            <tr>
-                <td>{{ daire.daire }}</td>
-                <td>{{ daire.daire_tipi }}</td>
-                <td>{{ daire.toplam_borc|floatformat:2 }}</td>
-                <td>{{ daire.odenen|floatformat:2 }}</td>
-                <td style="{% if daire.kalan > 0 %}color: red; font-weight: bold;{% endif %}">
-                    {{ daire.kalan|floatformat:2 }}
-                </td>
-                <td>
-                    {% if daire.kalan == 0 %}
-                        ✅ Ödendi
-                    {% elif daire.odenen > 0 %}
-                        ⚠️ Kısmi
-                    {% else %}
-                        ❌ Ödenmedi
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" style="text-align: center;">Bu dönemde aidat kaydı bulunmuyor</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    
+    <h2 style="font-size: 16px; margin: 20px 0 10px 0;">📋 Daire Bazlı Aidat Durumu</h2>
+
+    <div style="overflow-x: auto; width: 100%;">
+        <table id="aidatTablosu">
+            <thead>
+                <tr style="background: #1e3c72; color: white;">
+                    <th style="padding: 10px; border: 1px solid #ddd;">Daire</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Daire Tipi</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Toplam Borç (TL)</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Ödenen (TL)</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Kalan (TL)</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Durum</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for daire in daire_durum %}
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{{ daire.daire }}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{{ daire.daire_tipi }}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">{{ daire.toplam_borc|floatformat:2 }}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">{{ daire.odenen|floatformat:2 }}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">{{ daire.kalan|floatformat:2 }}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                        {% if daire.durum == "Ödendi" or daire.durum == "Odendi" %}
+                            <span class="durum-odendi">✅ Ödendi</span>
+                        {% else %}
+                            <span class="durum-odenmedi">❌ Ödenmedi</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="padding: 20px; text-align: center;">Veri bulunamadı</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: #d4edda; font-weight: bold;">
+                    <td colspan="2" style="padding: 10px; border: 1px solid #ddd;">Genel Toplam</td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">{{ toplam|floatformat:2 }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">{{ odenen|floatformat:2 }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">{{ odunmeyen|floatformat:2 }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+        
     <!-- İlerleme Çubuğu -->
     <div style="margin-top: 30px;">
-        <h3 style="font-size: 16px;">Genel Ödeme Durumu</h3>
+        <h3 style="font-size: 16px;">📊 Genel Ödeme Durumu</h3>
         <div style="background: #e9ecef; border-radius: 10px; overflow: hidden;">
-            <div id="progressBar" style="background: #28a745; width: {{ odenen_orani }}%; height: 30px; text-align: center; color: white; line-height: 30px;">
+            <div style="background: #28a745; width: {{ odenen_orani }}%; height: 30px; text-align: center; color: white; line-height: 30px;">
                 {{ odenen_orani|floatformat:1 }}%
             </div>
         </div>
     </div>
     
-    <div style="margin-top: 30px;">
-        <button onclick="basitYazdir()" style="background: #dc3545; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer;">🖨️ Yazdır / PDF Kaydet</button>
+    <!-- Butonlar -->
+    <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <button onclick="excelIndir()" class="btn btn-excel">📊 Excel Olarak İndir (.xlsx)</button>
+        <button onclick="csvIndir()" class="btn btn-csv">📄 CSV Olarak İndir</button>
+        <button onclick="raporYazdir()" class="btn btn-print">🖨️ Yazdır / PDF Kaydet</button>
     </div>
 </div>
 
 <script>
-function clearQuickFilter() {
-    window.location.href = window.location.pathname;
+// Blok seçince daireleri getir (AJAX ile)
+document.getElementById('blok_select').addEventListener('change', function() {
+    var blokId = this.value;
+    var daireSelect = document.getElementById('daire_select');
+    
+    if (blokId) {
+        fetch(`/admin/api/daireler/?blok=${blokId}`)
+            .then(response => response.json())
+            .then(data => {
+                daireSelect.innerHTML = '<option value="">Tüm Daireler</option>';
+                data.forEach(daire => {
+                    daireSelect.innerHTML += `<option value="${daire.id}">${daire.ad}</option>`;
+                });
+                // Seçili daire varsa onu seç
+                var seciliDaire = "{{ secili_daire|default:'' }}";
+                if (seciliDaire) {
+                    daireSelect.value = seciliDaire;
+                }
+            })
+            .catch(error => console.log('Daireler yüklenirken hata:', error));
+    } else {
+        // Tüm daireleri getir
+        fetch(`/admin/api/daireler/`)
+            .then(response => response.json())
+            .then(data => {
+                daireSelect.innerHTML = '<option value="">Tüm Daireler</option>';
+                data.forEach(daire => {
+                    daireSelect.innerHTML += `<option value="${daire.id}">${daire.ad}</option>`;
+                });
+            });
+    }
+});
+
+// Sayfa yüklendiğinde blok seçili ise daireleri getir
+document.addEventListener('DOMContentLoaded', function() {
+    var blokSelect = document.getElementById('blok_select');
+    if (blokSelect && blokSelect.value) {
+        blokSelect.dispatchEvent(new Event('change'));
+    }
+});
+
+// BİNLİK AYRAÇ FONKSİYONU
+function formatNumber(number) {
+    var formatted = parseFloat(number).toFixed(2);
+    var parts = formatted.split('.');
+    var integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return integerPart + ',' + parts[1] + ' TL';
 }
 
-function basitYazdir() {
-    // Özet kartlarındaki verileri al
-    var toplamAidat = "{{ toplam|floatformat:2 }}";
-    var odenen = "{{ odenen|floatformat:2 }}";
-    var odenenOrani = "{{ odenen_orani|floatformat:1 }}";
-    var odunmeyen = "{{ odunmeyen|floatformat:2 }}";
-    var donem = "{{ donem }}";
+// EXCEL İNDİR
+function excelIndir() {
+    var tablo = document.getElementById('aidatTablosu');
+    if (!tablo) {
+        alert('Tablo bulunamadı!');
+        return;
+    }
     
-    // Tablo içeriğini al
-    var tabloHtml = document.getElementById('raporTablosu').cloneNode(true);
+    var donemElem = document.getElementById('donemBilgisi');
+    var donem = donemElem ? donemElem.innerText.replace('📅 Dönem:', '').trim() : "Rapor";
     
-    // Yeni bir sayfa oluştur - SADECE TEMİZ RAPOR
-    var yeniSayfa = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Aidat Durumu Raporu</title>';
-    yeniSayfa += '<style>';
-    yeniSayfa += 'body { margin: 20px; padding: 0; font-family: Arial, sans-serif; }';
-    yeniSayfa += '.print-header { text-align: center; margin-bottom: 20px; }';
-    yeniSayfa += '.print-header h2 { margin: 0; font-size: 18pt; }';
-    yeniSayfa += '.print-header h3 { margin: 5px 0; font-size: 14pt; }';
-    yeniSayfa += '.print-header .date { font-size: 10pt; color: #555; margin-top: 5px; }';
-    yeniSayfa += '.donem { text-align: left; margin: 15px 0; padding: 8px; border-left: 4px solid #1e3c72; background: #f5f5f5; }';
-    yeniSayfa += '.ozet-kartlar { display: flex; gap: 20px; margin: 20px 0; flex-wrap: wrap; }';
-    yeniSayfa += '.ozet-kart { flex: 1; padding: 15px; text-align: center; border: 1px solid #ccc; }';
-    yeniSayfa += '.ozet-kart h3 { margin: 0 0 10px 0; font-size: 14px; }';
-    yeniSayfa += '.ozet-kart h2 { margin: 0; font-size: 20px; }';
-    yeniSayfa += '.ozet-kart p { margin: 5px 0 0 0; }';
-    yeniSayfa += 'table { width: 100%; border-collapse: collapse; margin: 20px 0; }';
-    yeniSayfa += 'th, td { border: 1px solid black; padding: 8px; text-align: left; }';
-    yeniSayfa += 'th { background-color: #f2f2f2; }';
-    yeniSayfa += '.progress-bar { background: #e9ecef; border-radius: 10px; overflow: hidden; margin: 10px 0; }';
-    yeniSayfa += '.progress { background: #555; height: 30px; text-align: center; color: white; line-height: 30px; }';
-    yeniSayfa += '@media print { @page { margin: 0.5cm; } }';
-    yeniSayfa += '</style>';
-    yeniSayfa += '</head><body>';
+    var excelData = [];
+    excelData.push(['SEFA-3 SİTESİ AİDAT DURUMU RAPORU']);
+    excelData.push(['']);
+    excelData.push(['Dönem:', donem]);
+    excelData.push(['Tarih:', new Date().toLocaleString('tr-TR')]);
+    excelData.push(['']);
     
-    // Print başlığı
-    yeniSayfa += '<div class="print-header">';
-    yeniSayfa += '<h2>Sefa-3 Sitesi</h2>';
-    yeniSayfa += '<h3>Aidat Durumu Raporu</h3>';
-    yeniSayfa += '<div class="date">' + new Date().toLocaleDateString('tr-TR') + ' ' + new Date().toLocaleTimeString('tr-TR') + '</div>';
-    yeniSayfa += '</div>';
+    var basliklar = [];
+    tablo.querySelectorAll('thead th').forEach(function(th) {
+        basliklar.push(th.innerText.trim());
+    });
+    excelData.push(basliklar);
     
-    // Dönem bilgisi
-    yeniSayfa += '<div class="donem"><strong>📅 Dönem:</strong> ' + donem + '</div>';
+    tablo.querySelectorAll('tbody tr').forEach(function(tr) {
+        var row = [];
+        var hucreler = tr.querySelectorAll('td');
+        hucreler.forEach(function(td, index) {
+            var text = td.innerText.replace(/[✅❌]/g, '').trim();
+            if (index === 2 || index === 3 || index === 4) {
+                var sayi = parseFloat(text.replace(/\./g, '').replace(/,/g, '.').replace(/[^0-9.-]/g, ''));
+                if (!isNaN(sayi)) {
+                    text = formatNumber(sayi);
+                }
+            }
+            row.push(text);
+        });
+        excelData.push(row);
+    });
     
-    // Özet kartları
-    yeniSayfa += '<div class="ozet-kartlar">';
-    yeniSayfa += '<div class="ozet-kart"><h3>Toplam Aidat</h3><h2>' + toplamAidat + ' TL</h2></div>';
-    yeniSayfa += '<div class="ozet-kart"><h3>Ödenen</h3><h2>' + odenen + ' TL</h2><p>(' + odenenOrani + '%)</p></div>';
-    yeniSayfa += '<div class="ozet-kart"><h3>Ödenmeyen</h3><h2>' + odunmeyen + ' TL</h2></div>';
-    yeniSayfa += '</div>';
+    // Toplam satırını ekle
+    var toplamSatir = tablo.querySelector('tfoot tr');
+    if (toplamSatir) {
+        var row = [];
+        toplamSatir.querySelectorAll('td').forEach(function(td) {
+            row.push(td.innerText.trim());
+        });
+        excelData.push(row);
+    }
     
-    // Tablo başlığı
-    yeniSayfa += '<h3 style="margin: 20px 0 10px 0;">Daire Bazlı Aidat Durumu</h3>';
+    var ws = XLSX.utils.aoa_to_sheet(excelData);
+    ws['!cols'] = [{wch:20}, {wch:15}, {wch:18}, {wch:18}, {wch:18}, {wch:15}];
     
-    // Tablo
-    yeniSayfa += tabloHtml.outerHTML;
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Aidat Durumu');
+    XLSX.writeFile(wb, 'Aidat_Raporu_' + donem.replace(/[\/\\:*?"<>|]/g, '-') + '.xlsx');
+}
+
+// CSV İNDİR
+function csvIndir() {
+    var tablo = document.getElementById('aidatTablosu');
+    if (!tablo) {
+        alert('Tablo bulunamadı!');
+        return;
+    }
     
-    // İlerleme çubuğu
-    yeniSayfa += '<div style="margin-top: 30px;">';
-    yeniSayfa += '<h3>Genel Ödeme Durumu</h3>';
-    yeniSayfa += '<div class="progress-bar">';
-    yeniSayfa += '<div class="progress" style="width: ' + odenenOrani + '%;">' + odenenOrani + '%</div>';
-    yeniSayfa += '</div></div>';
+    var donemElem = document.getElementById('donemBilgisi');
+    var donem = donemElem ? donemElem.innerText.replace('📅 Dönem:', '').trim() : "Rapor";
     
-    yeniSayfa += '</body></html>';
+    var csvRows = [];
+    csvRows.push(['"SEFA-3 SİTESİ AİDAT DURUMU RAPORU"']);
+    csvRows.push(['"Dönem: ' + donem + '"']);
+    csvRows.push(['"Tarih: ' + new Date().toLocaleString('tr-TR') + '"']);
+    csvRows.push([]);
     
-    // Yeni pencere aç ve yazdır
-    var yaziPencere = window.open();
-    yaziPencere.document.write(yeniSayfa);
-    yaziPencere.document.close();
-    yaziPencere.print();
+    var basliklar = [];
+    tablo.querySelectorAll('thead th').forEach(function(th) {
+        basliklar.push('"' + th.innerText.replace(/"/g, '""') + '"');
+    });
+    csvRows.push(basliklar);
+    
+    tablo.querySelectorAll('tbody tr').forEach(function(tr) {
+        var row = [];
+        var hucreler = tr.querySelectorAll('td');
+        hucreler.forEach(function(td, index) {
+            var text = td.innerText.replace(/[✅❌]/g, '').trim();
+            if (index === 2 || index === 3 || index === 4) {
+                var sayi = parseFloat(text.replace(/\./g, '').replace(/,/g, '.').replace(/[^0-9.-]/g, ''));
+                if (!isNaN(sayi)) {
+                    text = formatNumber(sayi);
+                }
+            }
+            row.push('"' + text.replace(/"/g, '""') + '"');
+        });
+        csvRows.push(row);
+    });
+    
+    var blob = new Blob(["\uFEFF" + csvRows.map(row => row.join(',')).join('\n')], {type: 'text/csv;charset=utf-8;'});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Aidat_Raporu_' + donem.replace(/[\/\\:*?"<>|]/g, '-') + '.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+// YAZDIRMA
+function raporYazdir() {
+    var tablo = document.getElementById('aidatTablosu');
+    if (!tablo) {
+        alert('Tablo bulunamadı!');
+        return;
+    }
+    
+    var donemElem = document.getElementById('donemBilgisi');
+    var donem = donemElem ? donemElem.innerText.replace('📅 Dönem:', '').trim() : "Rapor";
+    
+    var yeniSayfa = window.open();
+    yeniSayfa.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Aidat Raporu</title><style>' +
+        'body { margin: 20px; padding: 0; font-family: Arial, sans-serif; } ' +
+        '.print-header { text-align: center; margin-bottom: 20px; } ' +
+        '.print-header h2 { margin: 0; font-size: 18pt; } ' +
+        '.print-header h3 { margin: 5px 0; font-size: 14pt; } ' +
+        '.print-header .date { font-size: 10pt; color: #555; margin-top: 5px; } ' +
+        '.donem { margin: 15px 0; padding: 8px; border-left: 4px solid #1e3c72; background: #f5f5f5; } ' +
+        'table { width: 100%; border-collapse: collapse; margin: 20px 0; } ' +
+        'th, td { border: 1px solid black; padding: 8px; } ' +
+        'th { background-color: #1e3c72; color: white; } ' +
+        'td:nth-child(1), td:nth-child(2) { text-align: left; } ' +
+        'td:nth-child(3), td:nth-child(4), td:nth-child(5) { text-align: right; } ' +
+        'td:nth-child(6) { text-align: center; } ' +
+        '@media print { @page { margin: 0.5cm; } } ' +
+        '</style></head><body>');
+    yeniSayfa.document.write('<div class="print-header">');
+    yeniSayfa.document.write('<h2>Sefa-3 Sitesi</h2>');
+    yeniSayfa.document.write('<h3>Aidat Durumu Raporu</h3>');
+    yeniSayfa.document.write('<div class="date">' + new Date().toLocaleDateString('tr-TR') + ' ' + new Date().toLocaleTimeString('tr-TR') + '</div>');
+    yeniSayfa.document.write('</div>');
+    yeniSayfa.document.write('<div class="donem"><strong>📅 Dönem:</strong> ' + donem + '</div>');
+    yeniSayfa.document.write(tablo.outerHTML);
+    yeniSayfa.document.write('<hr><p style="text-align: center;">Sefa-3 Sitesi Yönetimi © ' + new Date().getFullYear() + '</p>');
+    yeniSayfa.document.close();
+    yeniSayfa.print();
 }
 </script>
+
+<!-- SheetJS Kütüphanesi -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
 {% endblock %}

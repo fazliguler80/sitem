@@ -1,24 +1,70 @@
 {% extends "portal/base.html" %}
+
 {% block content %}
 <h2>Hoş Geldiniz, {{ request.user.get_full_name }}</h2>
 <p>Daire: {{ daire.blok.blok_adi }}-{{ daire.daire_no }}</p>
 
-<div style="display: flex; gap: 20px; margin: 30px 0;">
-    <div style="flex:1; background: #d4edda; padding: 20px; border-radius: 10px; text-align: center;">
+<div class="card-container">
+    <!-- Borç Kartı -->
+    <div class="card bg-success-light">
         <h3>💰 Toplam Borç</h3>
-        <p style="font-size: 24px;">{{ toplam_borc|floatformat:2 }} TL</p>
+        <div class="amount">{{ toplam_borc|floatformat:2 }} TL</div>
+        <a href="{% url 'borc_durumu' %}" class="card-link">Borç Detayı →</a>
+    </div>
+    
+    <!-- Depozito Kartı (YENİ) -->
+    <div class="card {% if depozito_var %}bg-info-light{% else %}bg-warning-light{% endif %}">
+        <h3>🏦 Depozito</h3>
+        <div class="amount">
+            {% if depozito_var %}
+                {{ depozito_tutari|floatformat:2 }} TL
+            {% else %}
+                Kayıt Yok
+            {% endif %}
+        </div>
+        {% if depozito_var %}
+            <a href="{% url 'depozito_gecmisi' %}" class="card-link">
+                🔍 Geçmişi Görüntüle →
+            </a>
+        {% else %}
+            <small style="color: #856404;">Henüz depozito kaydınız bulunmuyor.</small>
+        {% endif %}
     </div>
 </div>
 
 <h3>📅 Son Aidatlar</h3>
-<table style="width:100%; border-collapse: collapse;">
-    <tr><th>Dönem</th><th>Tutar</th><th>Durum</th></tr>
-    {% for aidat in aidatlar %}
-    <tr>
-        <td>{{ aidat.ay }}/{{ aidat.yil }}</td>
-        <td>{{ aidat.tutar|floatformat:2 }} TL</td>
-        <td>{% if aidat.odendi_mi %}✅ Ödendi{% else %}❌ Ödenmedi{% endif %}</td>
-    </tr>
-    {% endfor %}
-</table>
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>Dönem</th>
+                <th>Açıklama</th>
+                <th>Tutar</th>
+                <th>Durum</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for aidat in aidatlar %}
+            <tr>
+                <td>{{ aidat.ay }}/{{ aidat.yil }}</td>
+                <td>{{ aidat.aciklama|default:"-" }}</td>
+                <td>{{ aidat.tutar|floatformat:2 }} TL</td>
+                <td>
+                    {% if aidat.odeme_yapildi_mi %}
+                        <span style="color: green;">✅ Ödendi</span>
+                    {% else %}
+                        <span style="color: red;">❌ Ödenmedi</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not aidatlar %}
+<div style="margin-top: 20px; padding: 10px; background: #fff3cd; border-radius: 5px;">
+    <small>ℹ️ Not: Sabit aidatlar bu listede gösterilmemektedir. Sadece ekstra gider ve yakıt aidatları görüntülenir.</small>
+</div>
+{% endif %}
 {% endblock %}

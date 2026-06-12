@@ -4,6 +4,9 @@ Django settings for sitem project.
 
 from pathlib import Path
 import os
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,13 +15,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'eg0$vq4p7+=pchjso2lq+u&9=d8)cn0a&h&#my=gakjo*fp-!4'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 # PythonAnywhere ve kendi alan adınız için ALLOWED_HOSTS
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
-    'fazliguler80.pythonanywhere.com',  # KULLANICI ADINIZI YAZIN (örnek: eymen)
+    'fazliguler80.pythonanywhere.com',
     'nokrat.com',
     'www.nokrat.com',
 ]
@@ -29,6 +32,33 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.nokrat.com',
 ]
 
+# ========== CLOUDINARY YAPILANDIRMASI ==========
+CLOUDINARY_CLOUD_NAME = "drclbvtlg"  # Cloudinary Dashboard'dan alın
+CLOUDINARY_API_KEY = "248838682669782"   # Dashboard'dan alın
+CLOUDINARY_API_SECRET = "qCMpFEPrg63MCJrbHsBl75FlUiM"  # Dashboard'dan alın
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': CLOUDINARY_CLOUD_NAME,
+    'API_KEY': CLOUDINARY_API_KEY,
+    'API_SECRET': CLOUDINARY_API_SECRET
+}
+
+cloudinary.config(
+    cloud_name=CLOUDINARY_CLOUD_NAME,
+    api_key=CLOUDINARY_API_KEY,
+    api_secret=CLOUDINARY_API_SECRET
+)
+
+# ========== DJANGO STORAGE AYARLARI (Cloudinary için) ==========
+STORAGES = {
+    'default': {
+        'BACKEND': 'cloudinary_storage.storage.RawMediaCloudinaryStorage'
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'
+    }
+}
+
 # Application definition
 INSTALLED_APPS = [
     'jazzmin',
@@ -38,13 +68,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'cloudinary_storage',
+    'cloudinary',
     'bina',
     'yonetim',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Statik dosyalar için
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -59,10 +91,11 @@ ROOT_URLCONF = 'sitem.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates'), os.path.join(BASE_DIR, 'bina/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -76,7 +109,7 @@ SILENCED_SYSTEM_CHECKS = ["security.W019"]
 
 WSGI_APPLICATION = 'sitem.wsgi.application'
 
-# Database - SQLite (PythonAnywhere için)
+# Database - SQLite
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -86,18 +119,10 @@ DATABASES = {
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 # Internationalization
@@ -108,17 +133,15 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_DIRS = [
     BASE_DIR / 'bina' / 'static',
 ]
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# Media files
+# Media files - ARTIK CLOUDINARY KULLANILIYOR
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# MEDIA_ROOT = BASE_DIR / 'media'  # Cloudinary kullanıldığı için yorumda
 
 # Default primary key
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

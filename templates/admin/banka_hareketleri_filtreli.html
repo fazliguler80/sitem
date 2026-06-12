@@ -1,0 +1,33 @@
+{% extends "admin/change_list.html" %}
+
+{% block filters %}
+{{ block.super }}
+
+<div style="background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 5px;">
+    <h4>📅 Tarih Aralığı Filtresi</h4>
+    <form method="get" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+        <!-- Mevcut diğer filter parametrelerini koru -->
+        {% for key, value in request.GET.items %}
+            {% if key != 'tarih_baslangic' and key != 'tarih_bitis' %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endif %}
+        {% endfor %}
+        
+        <div>
+            <label>Başlangıç:</label><br>
+            <input type="date" name="tarih_baslangic" value="{{ request.GET.tarih_baslangic }}">
+        </div>
+        <div>
+            <label>Bitiş:</label><br>
+            <input type="date" name="tarih_bitis" value="{{ request.GET.tarih_bitis }}">
+        </div>
+        <div>
+            <button type="submit" style="padding: 5px 15px;">🔍 Filtrele</button>
+        </div>
+        <div>
+            <a href="?" style="padding: 5px 15px; background: #6c757d; color: white; text-decoration: none;">🗑️ Temizle</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

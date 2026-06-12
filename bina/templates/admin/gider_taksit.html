@@ -1,0 +1,459 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 20px auto;">
+    <h2>💰 Gider Taksitlendirme</h2>
+    
+    <div style="background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <strong>Seçili Gider:</strong><br>
+        {% for gider in giderler %}
+        <div style="margin-top: 5px;">
+            📌 {{ gider.get_tip_display }} - {{ gider.blok|default:"Tüm Bloklar" }} - 
+            <strong style="color: #dc3545; font-size: 18px;">{{ gider.tutar }} TL</strong>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <form method="post" id="taksitForm" onsubmit="return formSubmit()">
+        {% csrf_token %}
+        
+        <!-- Taksit Tipi Seçimi -->
+        <div style="margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 5px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 10px;">Taksit Tipi:</label>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <label style="cursor: pointer;">
+                    <input type="radio" name="taksit_tipi" value="esit" checked onclick="toggleTaksitTipi('esit')"> 
+                    ➗ Eşit Taksit (Otomatik Böl)
+                </label>
+                <label style="cursor: pointer;">
+                    <input type="radio" name="taksit_tipi" value="manuel" onclick="toggleTaksitTipi('manuel')"> 
+                    ✏️ Manuel Taksit (Kullanıcı Girişli)
+                </label>
+                <label style="cursor: pointer;">
+                    <input type="radio" name="taksit_tipi" value="yuzde" onclick="toggleTaksitTipi('yuzde')"> 
+                    📊 Yüzde Bazlı Taksit
+                </label>
+            </div>
+        </div>
+        
+        <!-- Taksit Sayısı -->
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold;">Taksit Sayısı:</label>
+            <input type="number" name="taksit_sayisi" id="taksit_sayisi" value="3" min="2" max="12" style="width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" onchange="taksitSayisiDegisti()">
+        </div>
+        
+        <!-- Başlangıç Dönemi -->
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold;">Başlangıç Dönemi:</label>
+            <div style="display: flex; gap: 10px;">
+                <select name="baslangic_ay" id="baslangic_ay" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;" onchange="taksitSayisiDegisti()">
+                    <option value="1">1. Ay (Ocak)</option>
+                    <option value="2">2. Ay (Şubat)</option>
+                    <option value="3">3. Ay (Mart)</option>
+                    <option value="4">4. Ay (Nisan)</option>
+                    <option value="5">5. Ay (Mayıs)</option>
+                    <option value="6" selected>6. Ay (Haziran)</option>
+                    <option value="7">7. Ay (Temmuz)</option>
+                    <option value="8">8. Ay (Ağustos)</option>
+                    <option value="9">9. Ay (Eylül)</option>
+                    <option value="10">10. Ay (Ekim)</option>
+                    <option value="11">11. Ay (Kasım)</option>
+                    <option value="12">12. Ay (Aralık)</option>
+                </select>
+                <select name="baslangic_yil" id="baslangic_yil" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;" onchange="taksitSayisiDegisti()">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                    <option value="2029">2029</option>
+                    <option value="2030">2030</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Eşit Taksit Alanı -->
+        <div id="esit_alan" style="background: #d4edda; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+            <strong>📌 Eşit Taksit:</strong> Tutar otomatik olarak eşit bölünecektir.
+            <div id="esit_ozet" style="margin-top: 10px;"></div>
+        </div>
+        
+        <!-- Manuel Taksit Alanı (gizli) -->
+        <div id="manuel_alan" style="display: none; background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+            <strong>✏️ Manuel Taksit Tutarları:</strong>
+            <div id="manuel_inputlar" style="margin-top: 10px;"></div>
+        </div>
+        
+        <!-- Yüzde Taksit Alanı (gizli) -->
+        <div id="yuzde_alan" style="display: none; background: #cce5ff; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+            <strong>📊 Yüzde Bazlı Taksit:</strong>
+            <div id="yuzde_inputlar" style="margin-top: 10px;"></div>
+        </div>
+        
+        <div style="margin-top: 20px; display: flex; gap: 10px;">
+            <button type="submit" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">
+                ✅ Taksitlendir
+            </button>
+            <a href="{% url 'admin:bina_gider_changelist' %}" style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px;">
+                ↩️ İptal
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Toplam tutarı al (ilk giderin tutarı) - virgüllü sayıları düzgün parse et
+    var toplamTutar = 0;
+    {% for gider in giderler %}
+        var tutarStr = "{{ gider.tutar|stringformat:'f' }}";
+        // Virgül varsa noktaya çevir
+        tutarStr = tutarStr.replace(',', '.');
+        toplamTutar = parseFloat(tutarStr);
+    {% endfor %}
+
+    console.log("Toplam Tutar: " + toplamTutar);
+    
+    function taksitSayisiDegisti() {
+        var taksitSayisi = document.getElementById('taksit_sayisi').value;
+        var taksitTipi = document.querySelector('input[name="taksit_tipi"]:checked').value;
+        
+        if (taksitTipi === 'esit') {
+            esitHesapla(taksitSayisi);
+        } else if (taksitTipi === 'manuel') {
+            manuelInputOlustur(taksitSayisi);
+        } else if (taksitTipi === 'yuzde') {
+            yuzdeInputOlustur(taksitSayisi);
+        }
+    }
+    
+    function esitHesapla(taksitSayisi) {
+        taksitSayisi = parseInt(taksitSayisi);
+        var esitTutar = toplamTutar / taksitSayisi;
+        var html = '<table style="width:100%; border-collapse: collapse;">';
+        html += '<thead><tr style="background: #155724; color: white;"><th>Taksit No</th><th>Dönem</th><th>Tutar (TL)</th><th>Yüzde</th></tr></thead><tbody>';
+        var toplam = 0;
+        
+        for (var i = 1; i <= taksitSayisi; i++) {
+            var tutar;
+            if (i == taksitSayisi) {
+                tutar = toplamTutar - toplam;
+            } else {
+                tutar = esitTutar;
+            }
+            toplam += tutar;
+            var yuzde = (tutar / toplamTutar * 100).toFixed(1);
+            
+            var ay = parseInt(document.getElementById('baslangic_ay').value) + i - 1;
+            var yil = parseInt(document.getElementById('baslangic_yil').value);
+            while (ay > 12) {
+                ay -= 12;
+                yil++;
+            }
+            
+            // 🔥 Formatlı tutar
+            var tutarFormatted = new Intl.NumberFormat('tr-TR', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            }).format(tutar);
+            
+            html += `<tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;"><strong>${i}</strong></td>
+                <td style="padding: 8px;">${ay}/${yil}</td>
+                <td style="padding: 8px;"><strong style="color: #155724;">${tutarFormatted} TL</strong></td>
+                <td style="padding: 8px;">${yuzde}%</td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('esit_ozet').innerHTML = html;
+    }
+    
+    function manuelInputOlustur(taksitSayisi) {
+        taksitSayisi = parseInt(taksitSayisi);
+        var html = '<table style="width:100%; border-collapse: collapse;">';
+        html += '<thead><tr style="background: #856404; color: white;"><th style="padding: 8px;">Taksit No</th><th style="padding: 8px;">Dönem</th><th style="padding: 8px;">Tutar (TL)</th><th style="padding: 8px;">Öneri</th></tr></thead><tbody>';
+        
+        var baslangicAy = parseInt(document.getElementById('baslangic_ay').value);
+        var baslangicYil = parseInt(document.getElementById('baslangic_yil').value);
+        var esitTutar = toplamTutar / taksitSayisi;
+        var esitTutarFormatted = new Intl.NumberFormat('tr-TR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }).format(esitTutar);
+        
+        for (var i = 1; i <= taksitSayisi; i++) {
+            var ay = baslangicAy + i - 1;
+            var yil = baslangicYil;
+            while (ay > 12) {
+                ay -= 12;
+                yil++;
+            }
+            html += '<tr style="border-bottom: 1px solid #ddd;">';
+            html += '<td style="padding: 8px;"><strong>' + i + '</strong></td>';
+            html += '<td style="padding: 8px;">' + ay + '/' + yil + '</td>';
+            html += '<td style="padding: 8px;"><input type="number" name="taksit_' + i + '" step="0.01" value="' + esitTutar.toFixed(2) + '" style="width: 150px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;" onchange="manuelKontrol()"></td>';
+            html += '<td style="padding: 8px; color: #666;">' + esitTutarFormatted + ' TL</td>';
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        
+        var toplamTutarFormatted = new Intl.NumberFormat('tr-TR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }).format(toplamTutar);
+        var esitToplamFormatted = new Intl.NumberFormat('tr-TR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }).format(esitTutar * taksitSayisi);
+        
+        html += '<div style="margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px;">';
+        html += '<small>⚠️ Taksit tutarlarının toplamı <strong>' + toplamTutarFormatted + ' TL</strong> olmalıdır. Şu an: <span id="manuel_toplam" style="font-weight: bold;">' + esitToplamFormatted + '</span> TL</small>';
+        html += '</div>';
+        
+        document.getElementById('manuel_inputlar').innerHTML = html;
+    }
+    
+    function manuelKontrol() {
+        var taksitSayisi = parseInt(document.getElementById('taksit_sayisi').value);
+        var toplam = 0;
+        for (var i = 1; i <= taksitSayisi; i++) {
+            var input = document.querySelector(`input[name="taksit_${i}"]`);
+            if (input && input.value) {
+                toplam += parseFloat(input.value) || 0;
+            }
+        }
+        var toplamSpan = document.getElementById('manuel_toplam');
+        if (toplamSpan) {
+            var toplamFormatted = new Intl.NumberFormat('tr-TR', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            }).format(toplam);
+            toplamSpan.innerHTML = toplamFormatted;
+            toplamSpan.style.color = Math.abs(toplam - toplamTutar) > 0.01 ? 'red' : 'green';
+            toplamSpan.style.fontWeight = 'bold';
+        }
+    }
+    
+    function yuzdeInputOlustur(taksitSayisi) {
+        taksitSayisi = parseInt(taksitSayisi);
+        var html = '<table style="width:100%; border-collapse: collapse;">';
+        html += '<thead><tr style="background: #004085; color: white;"><th style="padding: 8px;">Taksit No</th><th style="padding: 8px;">Dönem</th><th style="padding: 8px;">Yüzde (%)</th><th style="padding: 8px;">Tutar (TL)</th><th style="padding: 8px;">Öneri</th></tr></thead><tbody>';
+        
+        var baslangicAy = parseInt(document.getElementById('baslangic_ay').value);
+        var baslangicYil = parseInt(document.getElementById('baslangic_yil').value);
+        var esitYuzde = (100 / taksitSayisi).toFixed(1);
+        var toplamTutarFormatted = new Intl.NumberFormat('tr-TR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }).format(toplamTutar);
+        
+        for (var i = 1; i <= taksitSayisi; i++) {
+            var ay = baslangicAy + i - 1;
+            var yil = baslangicYil;
+            while (ay > 12) {
+                ay -= 12;
+                yil++;
+            }
+            var defaultYuzde = (i == taksitSayisi) ? (100 - (esitYuzde * (taksitSayisi - 1))).toFixed(1) : esitYuzde;
+            var defaultTutar = (toplamTutar * defaultYuzde / 100);
+            var defaultTutarFormatted = new Intl.NumberFormat('tr-TR', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            }).format(defaultTutar);
+            
+            html += '<tr style="border-bottom: 1px solid #ddd;">';
+            html += '<td style="padding: 8px;"><strong>' + i + '</strong></td>';
+            html += '<td style="padding: 8px;">' + ay + '/' + yil + '</td>';
+            html += '<td style="padding: 8px;"><input type="number" name="yuzde_' + i + '" step="0.1" min="0" max="100" value="' + defaultYuzde + '" style="width: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;" onchange="yuzdeDegisti(' + i + ')"></td>';
+            html += '<td style="padding: 8px;"><strong id="tutar_' + i + '" style="color: #004085;">' + defaultTutarFormatted + '</strong> TL</td>';
+            html += '<td style="padding: 8px; color: #666;">Örn: %' + esitYuzde + '</td>';
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        html += '<div style="margin-top: 10px; padding: 8px; background: #cce5ff; border-radius: 4px;">';
+        html += '<small>⚠️ Yüzdelerin toplamı %100 olmalıdır. Son taksit otomatik tamamlanır. Toplam tutar: <strong>' + toplamTutarFormatted + ' TL</strong></small>';
+        html += '</div>';
+        
+        document.getElementById('yuzde_inputlar').innerHTML = html;
+        yuzdeToplamKontrol();
+    }
+    
+    function yuzdeDegisti(taksitNo) {
+        var taksitSayisi = parseInt(document.getElementById('taksit_sayisi').value);
+        var yuzdeInput = document.querySelector(`input[name="yuzde_${taksitNo}"]`);
+        var yuzde = parseFloat(yuzdeInput.value) || 0;
+        var tutar = (toplamTutar * yuzde / 100);
+        var tutarFormatted = new Intl.NumberFormat('tr-TR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }).format(tutar);
+        document.getElementById(`tutar_${taksitNo}`).innerHTML = tutarFormatted;
+        
+        // Son taksit için otomatik tamamlama
+        if (taksitNo == taksitSayisi - 1) {
+            var kalanYuzde = 100;
+            for (var i = 1; i <= taksitSayisi; i++) {
+                var yInput = document.querySelector(`input[name="yuzde_${i}"]`);
+                if (yInput && yInput.value && i != taksitSayisi) {
+                    kalanYuzde -= parseFloat(yInput.value);
+                }
+            }
+            var sonInput = document.querySelector(`input[name="yuzde_${taksitSayisi}"]`);
+            if (sonInput && kalanYuzde >= 0 && kalanYuzde <= 100) {
+                sonInput.value = kalanYuzde.toFixed(1);
+                var sonTutar = (toplamTutar * kalanYuzde / 100);
+                var sonTutarFormatted = new Intl.NumberFormat('tr-TR', { 
+                    minimumFractionDigits: 2, 
+                    maximumFractionDigits: 2 
+                }).format(sonTutar);
+                document.getElementById(`tutar_${taksitSayisi}`).innerHTML = sonTutarFormatted;
+            }
+        }
+        
+        yuzdeToplamKontrol();
+    }
+    
+    function yuzdeToplamKontrol() {
+        var taksitSayisi = parseInt(document.getElementById('taksit_sayisi').value);
+        var toplamYuzde = 0;
+        for (var i = 1; i <= taksitSayisi; i++) {
+            var yInput = document.querySelector(`input[name="yuzde_${i}"]`);
+            if (yInput && yInput.value) {
+                toplamYuzde += parseFloat(yInput.value);
+            }
+        }
+        if (Math.abs(toplamYuzde - 100) > 0.1) {
+            // Uyarı göster
+            var uyariDiv = document.getElementById('yuzde_uyari');
+            if (!uyariDiv) {
+                var div = document.createElement('div');
+                div.id = 'yuzde_uyari';
+                div.style.cssText = 'margin-top: 10px; padding: 8px; background: #f8d7da; color: #721c24; border-radius: 4px;';
+                div.innerHTML = `⚠️ Yüzdeler toplamı: ${toplamYuzde.toFixed(1)}% (%100 olmalı)`;
+                document.getElementById('yuzde_inputlar').appendChild(div);
+            } else {
+                uyariDiv.innerHTML = `⚠️ Yüzdeler toplamı: ${toplamYuzde.toFixed(1)}% (%100 olmalı)`;
+                uyariDiv.style.display = 'block';
+            }
+        } else {
+            var uyariDiv = document.getElementById('yuzde_uyari');
+            if (uyariDiv) uyariDiv.style.display = 'none';
+        }
+    }
+    
+    function toggleTaksitTipi(tip) {
+        document.getElementById('esit_alan').style.display = tip === 'esit' ? 'block' : 'none';
+        document.getElementById('manuel_alan').style.display = tip === 'manuel' ? 'block' : 'none';
+        document.getElementById('yuzde_alan').style.display = tip === 'yuzde' ? 'block' : 'none';
+        
+        var taksitSayisi = document.getElementById('taksit_sayisi').value;
+        if (tip === 'esit') {
+            esitHesapla(taksitSayisi);
+        } else if (tip === 'manuel') {
+            manuelInputOlustur(taksitSayisi);
+        } else if (tip === 'yuzde') {
+            yuzdeInputOlustur(taksitSayisi);
+        }
+    }
+    
+    function formSubmit() {
+        var taksitTipi = document.querySelector('input[name="taksit_tipi"]:checked').value;
+        var taksitSayisi = document.getElementById('taksit_sayisi').value;
+        
+        if (taksitTipi === 'manuel') {
+            var manuelTaksitler = [];
+            var toplam = 0;
+            for (var i = 1; i <= taksitSayisi; i++) {
+                var input = document.querySelector(`input[name="taksit_${i}"]`);
+                if (input && input.value) {
+                    var deger = parseFloat(input.value);
+                    manuelTaksitler.push(deger);
+                    toplam += deger;
+                } else {
+                    manuelTaksitler.push(0);
+                }
+            }
+            
+            if (Math.abs(toplam - toplamTutar) > 0.01) {
+                alert(`Taksit tutarlarının toplamı (${toplam.toFixed(2)} TL) gider tutarına (${toplamTutar} TL) eşit değil!`);
+                return false;
+            }
+            
+            var hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'manuel_taksitler';
+            hiddenInput.value = manuelTaksitler.join(',');
+            document.getElementById('taksitForm').appendChild(hiddenInput);
+        }
+        
+        if (taksitTipi === 'yuzde') {
+            var yuzdeler = [];
+            var toplamYuzde = 0;
+            for (var i = 1; i <= taksitSayisi; i++) {
+                var input = document.querySelector(`input[name="yuzde_${i}"]`);
+                if (input && input.value) {
+                    var yuzde = parseFloat(input.value);
+                    yuzdeler.push(yuzde);
+                    toplamYuzde += yuzde;
+                } else {
+                    yuzdeler.push(0);
+                }
+            }
+            
+            if (Math.abs(toplamYuzde - 100) > 0.1) {
+                alert(`Yüzdelerin toplamı (${toplamYuzde.toFixed(1)}%) %100 olmalı!`);
+                return false;
+            }
+            
+            var hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'yuzdeler';
+            hiddenInput.value = yuzdeler.join(',');
+            document.getElementById('taksitForm').appendChild(hiddenInput);
+        }
+        
+        return true;
+    }
+    
+    // Sayfa yüklendiğinde çalıştır
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("Sayfa yüklendi, toplam tutar: " + toplamTutar);
+        toggleTaksitTipi('esit');
+        
+        document.getElementById('taksit_sayisi').addEventListener('change', function() {
+            var tip = document.querySelector('input[name="taksit_tipi"]:checked').value;
+            if (tip === 'esit') {
+                esitHesapla(this.value);
+            } else if (tip === 'manuel') {
+                manuelInputOlustur(this.value);
+            } else if (tip === 'yuzde') {
+                yuzdeInputOlustur(this.value);
+            }
+        });
+        
+        document.getElementById('baslangic_ay').addEventListener('change', function() {
+            var tip = document.querySelector('input[name="taksit_tipi"]:checked').value;
+            var taksitSayisi = document.getElementById('taksit_sayisi').value;
+            if (tip === 'esit') {
+                esitHesapla(taksitSayisi);
+            } else if (tip === 'manuel') {
+                manuelInputOlustur(taksitSayisi);
+            } else if (tip === 'yuzde') {
+                yuzdeInputOlustur(taksitSayisi);
+            }
+        });
+        
+        document.getElementById('baslangic_yil').addEventListener('change', function() {
+            var tip = document.querySelector('input[name="taksit_tipi"]:checked').value;
+            var taksitSayisi = document.getElementById('taksit_sayisi').value;
+            if (tip === 'esit') {
+                esitHesapla(taksitSayisi);
+            } else if (tip === 'manuel') {
+                manuelInputOlustur(taksitSayisi);
+            } else if (tip === 'yuzde') {
+                yuzdeInputOlustur(taksitSayisi);
+            }
+        });
+    });
+</script>
+{% endblock %}

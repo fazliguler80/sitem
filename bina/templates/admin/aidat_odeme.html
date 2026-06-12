@@ -1,0 +1,36 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>Aidat Ödeme</h1>
+<div class="card">
+    <div class="card-body">
+        <p><strong>Daire:</strong> {{ aidat.daire }}</p>
+        <p><strong>Dönem:</strong> {{ aidat.ay }}/{{ aidat.yil }}</p>
+        <p><strong>Tutar:</strong> {{ aidat.tutar }} TL</p>
+        <p><strong>Açıklama:</strong> {{ aidat.aciklama }}</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Ödeme Tarihi:</label>
+                <input type="date" name="odeme_tarihi" value="{% now 'Y-m-d' %}" required>
+            </div>
+            <div class="form-group">
+                <label>Ödeyen Kişi:</label>
+                <select name="kim_odedi">
+                    <option value="">Seçiniz...</option>
+                    {% for kisi in kisiler %}
+                    <option value="{{ kisi.id }}">{{ kisi.ad_soyad }} ({{ kisi.telefon }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ödeme Notu:</label>
+                <textarea name="odeme_notu" rows="2" cols="40"></textarea>
+            </div>
+            <button type="submit" class="button">Ödemeyi Tamamla</button>
+            <a href="{% url 'admin:bina_aidat_changelist' %}" class="button">İptal</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

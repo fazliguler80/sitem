@@ -1,0 +1,45 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block nav-global %}
+<div style="display: inline-block; margin-left: 20px;">
+    <a href="/admin/raporlar/" style="color: white; text-decoration: none; padding: 8px 15px; background: #2a5298; border-radius: 4px; margin-right: 10px;">
+        📊 RAPORLAR
+    </a>
+    <a href="/admin/raporlar/gelir-gider/" style="color: white; text-decoration: none; padding: 8px 15px; background: #28a745; border-radius: 4px; margin-right: 10px;">
+        💰 Gelir/Gider
+    </a>
+    <a href="/admin/raporlar/banka-hareketleri/" style="color: white; text-decoration: none; padding: 8px 15px; background: #17a2b8; border-radius: 4px;">
+        🏦 Banka
+    </a>
+</div>
+{{ block.super }}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script>
+// Sayfa yüklendiğinde Go butonunu bul ve değiştir
+document.addEventListener('DOMContentLoaded', function() {
+    // Tüm butonları kontrol et
+    var buttons = document.querySelectorAll('button');
+    for (var i = 0; i < buttons.length; i++) {
+        if (buttons[i].innerText === 'Go') {
+            buttons[i].innerText = 'Çalıştır';
+            console.log('Buton değiştirildi!');
+        }
+    }
+});
+
+// Dinamik değişiklikleri izle (sayfa değişirse)
+var observer = new MutationObserver(function() {
+    var buttons = document.querySelectorAll('button');
+    for (var i = 0; i < buttons.length; i++) {
+        if (buttons[i].innerText === 'Go') {
+            buttons[i].innerText = 'Çalıştır';
+        }
+    }
+});
+observer.observe(document.body, { childList: true, subtree: true });
+</script>
+{% endblock %}

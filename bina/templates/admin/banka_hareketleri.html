@@ -1,0 +1,92 @@
+{% extends "admin/change_list.html" %}
+
+{% block filters %}
+<div class="tarih-filtreleri" style="background: #f8f9fa; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+    <h4>📅 Tarih Filtresi</h4>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+        <button type="button" class="hizli-tarih" data-gun="7">Son 7 Gün</button>
+        <button type="button" class="hizli-tarih" data-gun="15">Son 15 Gün</button>
+        <button type="button" class="hizli-tarih" data-gun="30">Son 30 Gün</button>
+        <button type="button" class="hizli-tarih" data-gun="1ay">Son 1 Ay</button>
+        <button type="button" class="hizli-tarih" data-gun="3ay">Son 3 Ay</button>
+        <button type="button" class="hizli-tarih" data-gun="6ay">Son 6 Ay</button>
+        <button type="button" class="hizli-tarih" data-gun="1yil">Son 1 Yıl</button>
+        <button type="button" id="temizle-filtre">Temizle</button>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: flex-end;">
+        <div>
+            <label>Tarih Aralığı:</label><br>
+            <input type="date" id="baslangic_tarih" value="{{ baslangic_tarih }}">
+        </div>
+        <div>
+            <label>-</label><br>
+            <input type="date" id="bitis_tarih" value="{{ bitis_tarih }}">
+        </div>
+        <div>
+            <button type="button" id="uygula-tarih">Uygula</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Hızlı tarih butonları
+    document.querySelectorAll('.hizli-tarih').forEach(btn => {
+        btn.addEventListener('click', function() {
+            let gun = this.getAttribute('data-gun');
+            let url = new URL(window.location.href);
+            url.searchParams.set('hizli_tarih', gun);
+            url.searchParams.delete('baslangic_tarih');
+            url.searchParams.delete('bitis_tarih');
+            window.location.href = url.toString();
+        });
+    });
+    
+    // Temizle butonu
+    document.getElementById('temizle-filtre').addEventListener('click', function() {
+        let url = new URL(window.location.href);
+        url.searchParams.delete('hizli_tarih');
+        url.searchParams.delete('baslangic_tarih');
+        url.searchParams.delete('bitis_tarih');
+        window.location.href = url.toString();
+    });
+    
+    // Uygula butonu
+    document.getElementById('uygula-tarih').addEventListener('click', function() {
+        let baslangic = document.getElementById('baslangic_tarih').value;
+        let bitis = document.getElementById('bitis_tarih').value;
+        if (baslangic && bitis) {
+            let url = new URL(window.location.href);
+            url.searchParams.delete('hizli_tarih');
+            url.searchParams.set('baslangic_tarih', baslangic);
+            url.searchParams.set('bitis_tarih', bitis);
+            window.location.href = url.toString();
+        } else {
+            alert('Lütfen başlangıç ve bitiş tarihi seçin!');
+        }
+    });
+});
+</script>
+
+<style>
+.tarih-filtreleri button {
+    background: #e9ecef;
+    border: 1px solid #dee2e6;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.tarih-filtreleri button:hover {
+    background: #007bff;
+    color: white;
+}
+.tarih-filtreleri input {
+    padding: 5px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+</style>
+
+{{ block.super }}
+{% endblock %}

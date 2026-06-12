@@ -1,54 +1,306 @@
-from django import forms
-from .services.maas_hesapla import MaasHesaplayici
-from decimal import Decimal
-from django.utils.dateparse import parse_date
-from django.http import JsonResponse
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-#import pandas as pd
-import io
-from django.contrib import admin
-from .models import Fatura
-from django.urls import path
-from django.shortcuts import render
-from django.db.models import Sum
-from .models import BankaHareket, Banka
-from datetime import datetime
-from django.http import JsonResponse
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-from datetime import datetime, timedelta
+# bina/admin.py
+
 import os
-from django.utils.html import format_html
-from django.contrib.auth.models import User
-from django.utils.safestring import mark_safe
 import zipfile
 import tempfile
 import shutil
 import math
-from django.shortcuts import render
+import json
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+from django import forms
+from django.contrib import admin
+from django.contrib.admin import SimpleListFilter
+from django.contrib.admin.views.main import ChangeList
+from django.contrib.admin.options import IncorrectLookupParameters
+from django.contrib.auth.models import User
+from django.contrib.auth import admin as auth_admin
 from django.contrib import messages
-from datetime import datetime
-from django.http import HttpResponse
+from django.contrib.auth.forms import PasswordChangeForm
+from django.urls import path
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse, HttpResponse
+from django.db.models import Sum
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from django.conf import settings
-from .models import DaireKullanici
+from django.contrib.admin import SimpleListFilter
+from datetime import date
 
 from .models import (
     SiteAyarlari, Blok, Daire, Kisi, DaireIliskisi, 
     Aidat, Gider, Yonetici, Personel, Abonelik, 
     Firma, Banka, BankaHareket, Depozito, DepozitoHareket,
-    Fatura
+    Fatura, DaireKullanici, AsgariUcret, MaasBordrosu
 )
+
+# bina/admin.py - EN ÜSTE EKLEYİN (import'lardan sonra)
+from django import forms
+from django.shortcuts import render
+from django.urls import path
+from django.utils.html import format_html
+from datetime import datetime, timedelta
+
+class TarihFiltresiMixin:
+    """Admin liste ekranlarına hızlı tarih filtresi ekleyen mixin"""
+    
+    def changelist_view(self, request, extra_context=None):
+        # Hızlı tarih filtrelerini işle
+        hizli_tarih = request.GET.get('hizli_tarih', '')
+        baslangic_tarih = request.GET.get('baslangic_tarih', '')
+        bitis_tarih = request.GET.get('bitis_tarih', '')
+        
+        bugun = datetime.now().date()
+        
+        if hizli_tarih == 'son7gun':
+            baslangic = bugun - timedelta(days=7)
+            bitis = bugun
+            baslangic_tarih = baslangic.strftime('%Y-%m-%d')
+            bitis_tarih = bitis.strftime('%Y-%m-%d')
+        elif hizli_tarih == 'son15gun':
+            baslangic = bugun - timedelta(days=15)
+            bitis = bugun
+            baslangic_tarih = baslangic.strftime('%Y-%m-%d')
+            bitis_tarih = bitis.strftime('%Y-%m-%d')
+        elif hizli_tarih == 'son30gun':
+            baslangic = bugun - timedelta(days=30)
+            bitis = bugun
+            baslangic_tarih = baslangic.strftime('%Y-%m-%d')
+            bitis_tarih = bitis.strftime('%Y-%m-%d')
+        elif hizli_tarih == 'son1ay':
+            baslangic = bugun - timedelta(days=30)
+            bitis = bugun
+            baslangic_tarih = baslangic.strftime('%Y-%m-%d')
+            bitis_tarih = bitis.strftime('%Y-%m-%d')
+        elif hizli_tarih == 'son3ay':
+            baslangic = bugun - timedelta(days=90)
+            bitis = bugun
+            baslangic_tarih = baslangic.strftime('%Y-%m-%d')
+            bitis_tarih = bitis.strftime('%Y-%m-%d')
+        elif hizli_tarih == 'son6ay':
+            baslangic = bugun - timedelta(days=180)
+            bitis = bugun
+            baslangic_tarih = baslangic.strftime('%Y-%m-%d')
+            bitis_tarih = bitis.strftime('%Y-%m-%d')
+        elif hizli_tarih == 'son1yil':
+            baslangic = bugun - timedelta(days=365)
+            bitis = bugun
+            baslangic_tarih = baslangic.strftime('%Y-%m-%d')
+            bitis_tarih = bitis.strftime('%Y-%m-%d')
+        
+        # Tarih aralığını queryset'e uygula
+        if baslangic_tarih and bitis_tarih:
+            try:
+                baslangic = datetime.strptime(baslangic_tarih, '%Y-%m-%d').date()
+                bitis = datetime.strptime(bitis_tarih, '%Y-%m-%d').date()
+                request.GET._mutable = True
+                # Tarih aralığını URL parametresi olarak ekle
+                if hasattr(self, 'tarih_alan'):
+                    request.GET[f'{self.tarih_alan}__range'] = f'{baslangic},{bitis}'
+                request.GET._mutable = False
+            except:
+                pass
+        
+        extra_context = extra_context or {}
+        extra_context['hizli_tarih'] = hizli_tarih
+        extra_context['baslangic_tarih'] = baslangic_tarih
+        extra_context['bitis_tarih'] = bitis_tarih
+        
+        return super().changelist_view(request, extra_context=extra_context)
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('tarih-filtrele/', self.admin_site.admin_view(self.tarih_filtrele_view), name=f'{self.model._meta.model_name}_tarih_filtrele'),
+        ]
+        return custom_urls + urls
+    
+    def tarih_filtrele_view(self, request):
+        """AJAX ile tarih filtresi uygulama"""
+        from django.http import JsonResponse
+        hizli_tarih = request.GET.get('hizli_tarih', '')
+        baslangic = request.GET.get('baslangic', '')
+        bitis = request.GET.get('bitis', '')
+        
+        # URL'yi oluştur
+        url = f'../?'
+        if hizli_tarih:
+            url += f'hizli_tarih={hizli_tarih}&'
+        if baslangic:
+            url += f'baslangic_tarih={baslangic}&'
+        if bitis:
+            url += f'bitis_tarih={bitis}&'
+        
+        return JsonResponse({'url': url})
+
+# ==================== BLOK FİLTRESİ ====================
+class BlokFilter(SimpleListFilter):
+    """Daire ilişkileri için blok bazlı filtreleme"""
+    title = 'Blok'
+    parameter_name = 'blok'
+    
+    def lookups(self, request, model_admin):
+        # Tüm blokları listele
+        bloklar = Blok.objects.all().order_by('blok_adi')
+        return [(blok.blok_adi, f'{blok.get_blok_adi_display()}') for blok in bloklar]
+    
+    def queryset(self, request, queryset):
+        if self.value():
+            # Seçilen bloktaki daireleri filtrele
+            return queryset.filter(daire__blok__blok_adi=self.value())
+        return queryset
+
+
+# ==================== DAİRE İLİŞKİLERİ ADMIN ====================
+class DaireIliskisiAdmin(admin.ModelAdmin):
+    list_display = ['daire_bilgisi', 'kisi_bilgisi', 'iliski_tipi', 'baslangic_tarihi', 'bitis_tarihi', 'aktif_mi', 'kira_tutari']
+    list_filter = ['aktif_mi', 'iliski_tipi', BlokFilter]
+    list_editable = ['aktif_mi', 'birincil_mi']
+    search_fields = ['daire__daire_no', 'daire__blok__blok_adi', 'kisi__ad_soyad', 'kisi__telefon']
+    list_editable = ['aktif_mi']
+    list_per_page = 20
+    
+    fieldsets = (
+        ('Daire Bilgileri', {
+            'fields': ('daire',)
+        }),
+        ('Kişi Bilgileri', {
+            'fields': ('kisi', 'iliski_tipi', 'baslangic_tarihi', 'bitis_tarihi', 'aktif_mi')
+        }),
+        ('Önemli Ayarlar', {
+            'fields': ('birincil_mi', 'kira_tutari'),  # SADECE BURADA BİR KERE
+            'description': '✅ Birincil kişi: Aidat ve borçlar bu kişiye yansır. Her dairede sadece 1 kişi birincil olabilir.'
+        }),
+    )
+    
+    def daire_bilgisi(self, obj):
+        """Daire bilgisini formatlı göster"""
+        blok_adi = obj.daire.blok.get_blok_adi_display()
+        return format_html(
+            '<strong>{}</strong><br><small style="color: #666;">{}</small>',
+            f"{blok_adi} - {obj.daire.daire_no}",
+            f"Arsa Payı: {obj.daire.arsa_pay_pay}/{obj.daire.arsa_pay_payda}"
+        )
+    daire_bilgisi.short_description = 'Daire'
+    
+    def kisi_bilgisi(self, obj):
+        """Kişi bilgisini formatlı göster"""
+        return format_html(
+            '<strong>{}</strong><br><small>📞 {}</small>',
+            obj.kisi.ad_soyad,
+            obj.kisi.telefon
+        )
+    kisi_bilgisi.short_description = 'Kişi'
+    
+    actions = ['aktif_yap', 'pasif_yap']
+    
+    def aktif_yap(self, request, queryset):
+        queryset.update(aktif_mi=True)
+        self.message_user(request, f"{queryset.count()} ilişki aktif yapıldı.")
+    aktif_yap.short_description = "Seçili ilişkileri aktif yap"
+    
+    def pasif_yap(self, request, queryset):
+        queryset.update(aktif_mi=False)
+        self.message_user(request, f"{queryset.count()} ilişki pasif yapıldı.")
+    pasif_yap.short_description = "Seçili ilişkileri pasif yap"
 
 class YoneticiAdmin(admin.ModelAdmin):
     list_display = ('ad_soyad', 'gorev_tipi', 'telefon', 'email', 'gorev_baslangic', 'aktif_mi')
     list_filter = ('gorev_tipi', 'aktif_mi')
     search_fields = ('ad_soyad', 'email')
 
+# bina/admin.py - Düzeltilmiş DaireIliskisiInline
+
+class DaireIliskisiInline(admin.TabularInline):
+    """Kişi detay sayfasında daire ilişkilerini gösterir"""
+    model = DaireIliskisi
+    extra = 1
+    fields = ['daire', 'iliski_tipi', 'birincil_mi', 'aktif_mi', 'baslangic_tarihi', 'bitis_tarihi']
+    raw_id_fields = ['daire']
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "daire":
+            kwargs["queryset"] = Daire.objects.select_related('blok').order_by('blok__blok_adi', 'daire_no')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+class DaireIliskisiInline(admin.TabularInline):
+    """Kişi detay sayfasında daire ilişkilerini gösterir"""
+    model = DaireIliskisi
+    extra = 1
+    fields = ['daire', 'iliski_tipi', 'birincil_mi', 'aktif_mi', 'baslangic_tarihi', 'bitis_tarihi']
+    raw_id_fields = ['daire']  # Autocomplete yerine raw_id_fields kullan
+    # autocomplete_fields = ['daire']  # Bunu yorum satırı yapın veya silin
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "daire":
+            kwargs["queryset"] = Daire.objects.select_related('blok').order_by('blok__blok_adi', 'daire_no')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+class DaireIliskisiInlineForDaire(admin.TabularInline):
+    """Daire detay sayfasında kişi ilişkilerini gösterir"""
+    model = DaireIliskisi
+    extra = 1
+    fields = ['kisi', 'iliski_tipi', 'birincil_mi', 'aktif_mi', 'baslangic_tarihi', 'bitis_tarihi']
+    raw_id_fields = ['kisi']
+    autocomplete_fields = ['kisi']
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "kisi":
+            kwargs["queryset"] = Kisi.objects.order_by('ad_soyad')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
 class KisiAdmin(admin.ModelAdmin):
-    list_display = ('ad_soyad', 'kisi_tipi', 'telefon', 'email', 'aktif_mi')
-    list_filter = ('kisi_tipi', 'aktif_mi')
-    search_fields = ('ad_soyad', 'tc_kimlik', 'telefon')
+    list_display = ['ad_soyad', 'kisi_tipi', 'diger_aciklama', 'telefon', 'email', 'aktif_mi', 'daire_bilgisi']
+    list_filter = ['kisi_tipi', 'aktif_mi']
+    search_fields = ['ad_soyad', 'telefon', 'email', 'tc_kimlik', 'diger_aciklama']
+    list_editable = ['aktif_mi']
+    
+    # YENİ: Daire ilişkilerini göster
+    inlines = [DaireIliskisiInline]
+    
+    fieldsets = (
+        ('Kişisel Bilgiler', {
+            'fields': ('ad_soyad', 'kisi_tipi', 'diger_aciklama', 'tc_kimlik')
+        }),
+        ('İletişim Bilgileri', {
+            'fields': ('telefon', 'cep_telefonu', 'is_telefonu', 'email', 'adres')
+        }),
+        ('Acil Durum', {
+            'fields': ('acil_durum_kisisi', 'acil_durum_tel'),
+            'classes': ('collapse',)
+        }),
+        ('Diğer', {
+            'fields': ('aktif_mi', 'notlar'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    # YENİ: Listedeki her kişi için bağlı olduğu daireyi göster
+    def daire_bilgisi(self, obj):
+        iliskiler = obj.daire_iliskileri.filter(aktif_mi=True)
+        if iliskiler.exists():
+            daireler = []
+            for iliski in iliskiler:
+                birincil = " (Birincil)" if iliski.birincil_mi else ""
+                daireler.append(f"{iliski.daire.blok.get_blok_adi_display()}-{iliski.daire.daire_no}{birincil}")
+            return ", ".join(daireler)
+        return "-"
+    daire_bilgisi.short_description = 'Bağlı Daire(ler)'
+    
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.prefetch_related('daire_iliskileri__daire__blok')
+
+    class Media:
+        js = ('admin/js/kisi_tipi.js',)
+        css = {
+            'all': ('admin/css/kisi_admin.css',)
+        }
 
 class FirmaAdmin(admin.ModelAdmin):
     list_display = ('firma_adi', 'tip', 'yetkili_kisi', 'telefon', 'sozlesme_bitis', 'aktif_mi')
@@ -56,8 +308,10 @@ class FirmaAdmin(admin.ModelAdmin):
     search_fields = ('firma_adi', 'yetkili_kisi')
 
 class DaireAdmin(admin.ModelAdmin):
-    list_display = ('blok', 'daire_no', 'kat', 'daire_tipi', 'malik_bilgisi', 'telefon_bilgisi', 'durum')
-    list_filter = ('blok', 'daire_tipi')
+    list_display = ('blok', 'daire_no', 'kat', 'daire_tipi', 'malik_bilgisi', 
+                    'isletme_giderlerinden_muaf', 'demirbas_giderlerinden_muaf', 'durum')
+    list_filter = ('blok', 'daire_tipi', 'isletme_giderlerinden_muaf', 'demirbas_giderlerinden_muaf')
+    list_editable = ('isletme_giderlerinden_muaf', 'demirbas_giderlerinden_muaf')
     search_fields = ('daire_no', 'blok__blok_adi')
 
     def malik_bilgisi(self, obj):
@@ -73,7 +327,7 @@ class DaireAdmin(admin.ModelAdmin):
     def durum(self, obj):
         # Boolean değer döndür (True=Dolu, False=Boş)
         return obj.iliskiler.filter(aktif_mi=True).exists()
-    durum.boolean = True          # ✅ simge gösterir
+    durum.boolean = True
     durum.short_description = 'Durum'
 
 class BankaAdmin(admin.ModelAdmin):
@@ -105,7 +359,9 @@ class BankaAdmin(admin.ModelAdmin):
         extra_context['toplam_bakiye'] = toplam
         return super().changelist_view(request, extra_context=extra_context)
 
-class BankaHareketAdmin(admin.ModelAdmin):
+class BankaHareketAdmin(TarihFiltresiMixin, admin.ModelAdmin):
+    change_list_template = 'admin/banka_hareketleri_filtreli.html'
+    tarih_alan = 'tarih'
     list_display = ('banka', 'hareket_tipi', 'tutar', 'tarih', 'aciklama')
     list_filter = ('hareket_tipi', 'tarih', 'banka')
     search_fields = ('aciklama', 'dekont_no')
@@ -170,55 +426,253 @@ class BankaHareketAdmin(admin.ModelAdmin):
             'all': ('admin/css/banka_hareketleri.css',)
         }
 
-class AidatAdmin(admin.ModelAdmin):
-    list_display = ('daire', 'ay', 'yil', 'tutar', 'odendi_mi', 'odeme_tarihi')
-    list_filter = ('odendi_mi', 'yil', 'ay', 'aidat_tipi')
-    search_fields = ('daire__blok__blok_adi', 'daire__daire_no', 'aciklama')
+# bina/admin.py - AidatAdmin sınıfını tamamen düzeltin
+
+from django.contrib import admin
+from django.urls import path
+from django.shortcuts import get_object_or_404, redirect
+from django.http import JsonResponse
+from django.utils.html import format_html
+from django.contrib import messages
+from django.contrib.admin.views.main import ChangeList
+from django.contrib.admin.options import IncorrectLookupParameters
+from django.db.models import Sum
+import json
+
+from .models import Aidat, Kisi
+
+# bina/admin.py - BASİT AİDAT ADMIN (geçici çözüm)
+
+# bina/admin.py
+
+
+# bina/admin.py - AidatAdmin sınıfı
+
+class OdemeDurumuFilter(SimpleListFilter):
+    title = 'Ödeme Durumu'
+    parameter_name = 'odeme_durumu'
+    
+    def lookups(self, request, model_admin):
+        return (
+            ('odendi', '✅ Ödendi'),
+            ('odenmedi', '❌ Ödenmedi'),
+        )
+    
+    def queryset(self, request, queryset):
+        if self.value() == 'odendi':
+            return queryset.filter(odeme_yapildi_mi=True)
+        if self.value() == 'odenmedi':
+            return queryset.filter(odeme_yapildi_mi=False)
+        return queryset
+
+from django.contrib.admin import SimpleListFilter
+from bina.models import Daire
+
+class DaireFiltresi(SimpleListFilter):
+    title = 'Daire'
+    parameter_name = 'daire'
+    
+    def lookups(self, request, model_admin):
+        blok_id = request.GET.get('daire__blok__id__exact', None)
+        
+        if blok_id:
+            daireler = Daire.objects.filter(blok_id=blok_id).order_by('daire_no')
+        else:
+            daireler = Daire.objects.none()
+        
+        result = []
+        for d in daireler:
+            blok_adi = d.blok.get_blok_adi_display()
+            arsa_pay = f"{d.arsa_pay_pay}/{d.arsa_pay_payda}"
+            # Örnek: "C-18 (48/2700)"
+            display_text = f"{blok_adi}-{d.daire_no} ({arsa_pay})"
+            result.append((d.id, display_text))
+        
+        return result
+    
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(daire__id=self.value())
+        return queryset
+
+
+class AidatAdmin(TarihFiltresiMixin, admin.ModelAdmin):
+    tarih_alan = 'odeme_tarihi'
+    list_display = ('daire', 'ay', 'yil', 'aidat_tipi', 'tutar', 'odeme_yapildi_mi', 'odeme_tarihi', 'kim_odedi_bilgisi')
+    list_filter = (
+        'odeme_yapildi_mi',
+        'yil',
+        'ay',
+        'aidat_tipi',
+        'daire__blok',  # Önce Blok
+        DaireFiltresi,             # Sonra Daire (bloğa bağlı)
+        'gider__tip',
+    )
+    search_fields = ('daire__blok__blok_adi', 'daire__daire_no', 'aciklama', 'kim_odedi__ad_soyad')
     date_hierarchy = 'odeme_tarihi'
     list_per_page = 25
+    list_editable = ('odeme_yapildi_mi',)
+    autocomplete_fields = ['daire']
+    
+    fieldsets = (
+        ('Temel Bilgiler', {
+            'fields': ('daire', 'ay', 'yil', 'aidat_tipi', 'tutar', 'aciklama')
+        }),
+        ('Gider Bilgisi', {
+            'fields': ('gider', 'yuvarlama_farki'),
+            'classes': ('collapse',)
+        }),
+        ('Ödeme Bilgileri', {
+            'fields': ('odeme_yapildi_mi', 'odeme_tarihi', 'kim_odedi', 'odeme_notu'),
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """Aidat kaydedilirken otomatik açıklama oluştur"""
+        
+        if obj.aidat_tipi == 'sabit':
+            # Sabit aidat: gider yok, açıklama formatlı
+            obj.gider = None
+            obj.aciklama = f"{obj.ay}/{obj.yil} Sabit Aidat - {obj.tutar:.2f} TL"
+        else:
+            # Ekstra veya Yakıt aidatları
+            if not obj.aciklama or change == False:
+                if obj.gider:
+                    hesaplanan = float(obj.tutar) - float(obj.yuvarlama_farki)
+                    obj.aciklama = f"{obj.gider.get_tip_display()} - {obj.gider.tarih} (Hesap: {hesaplanan:.2f} TL → Ödenecek: {obj.tutar:.2f} TL)"
+                else:
+                    obj.aciklama = f"{obj.ay}/{obj.yil} {obj.get_aidat_tipi_display()} - {obj.tutar:.2f} TL"
+        
+        super().save_model(request, obj, form, change)
+    
+    def kim_odedi_bilgisi(self, obj):
+        if obj.kim_odedi:
+            return obj.kim_odedi.ad_soyad
+        return "-"
+    kim_odedi_bilgisi.short_description = "Ödeyen Kişi"
 
-    actions = ['aylik_sabit_aidat_olustur']
-
-    def aylik_sabit_aidat_olustur(self, request, queryset):
-        """Seçili ay/yıl için sabit aidat oluştur"""
+    def gider_bilgisi(self, obj):
+        """Gider bilgisini formatlı göster"""
+        if obj.gider:
+            return f"{obj.gider.get_tip_display()} - {obj.gider.tarih.strftime('%d/%m/%Y')}"
+        return "-"
+    
+    def kim_odedi_bilgisi(self, obj):
+        """Ödeyen kişi bilgisini göster"""
+        if obj.kim_odedi:
+            return f"{obj.kim_odedi.ad_soyad}"
+        return "-"
+    kim_odedi_bilgisi.short_description = "Ödeyen Kişi"
+    kim_odedi_bilgisi.admin_order_field = 'kim_odedi__ad_soyad'
+    
+    actions = ['toplu_odeme_yap', 'toplu_odeme_iptal', 'aidat_raporu_excel']
+    
+    def toplu_odeme_yap(self, request, queryset):
+        """Seçili aidatları toplu ödeme yap"""
+        from datetime import date
+        count = 0
+        for aidat in queryset:
+            if not aidat.odeme_yapildi_mi:
+                aidat.odeme_yap(odeme_tarihi=date.today())
+                count += 1
+        self.message_user(request, f"✅ {count} aidat ödendi.")
+    toplu_odeme_yap.short_description = "Seçili aidatları öde"
+    
+    def toplu_odeme_iptal(self, request, queryset):
+        """Seçili aidatların ödemesini iptal et"""
+        count = 0
+        for aidat in queryset:
+            if aidat.odeme_yapildi_mi:
+                aidat.odeme_iptal()
+                count += 1
+        self.message_user(request, f"✅ {count} aidatın ödemesi iptal edildi.")
+    toplu_odeme_iptal.short_description = "Seçili aidatların ödemesini iptal et"
+    
+    def aidat_raporu_excel(self, request, queryset):
+        """Seçili aidatları Excel'e aktar"""
+        import openpyxl
+        from django.http import HttpResponse
+        from openpyxl.styles import Font, Alignment, PatternFill
         from datetime import datetime
-        ay = request.GET.get('ay', datetime.now().month)
-        yil = request.GET.get('yil', datetime.now().year)
         
-        try:
-            ay = int(ay)
-            yil = int(yil)
-        except:
-            ay = datetime.now().month
-            yil = datetime.now().year
+        # Excel dosyası oluştur
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Aidat Raporu"
         
-        result = Aidat.aylik_sabit_aidatlari_olustur(ay, yil)
-        self.message_user(request, f"{ay}/{yil} için {result['olusturulan']} yeni aidat oluşturuldu, {result['guncellenen']} aidat güncellendi.")
-    aylik_sabit_aidat_olustur.short_description = "Seçili dönem için sabit aidat oluştur"
+        # Başlık satırı
+        basliklar = ['ID', 'Daire', 'Dönem', 'Aidat Tipi', 'Gider Tipi', 'Tutar', 'Ödendi mi?', 'Ödeme Tarihi', 'Ödeyen Kişi', 'Açıklama']
+        for col, baslik in enumerate(basliklar, 1):
+            cell = ws.cell(row=1, column=col, value=baslik)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="1e3c72", end_color="1e3c72", fill_type="solid")
+            cell.alignment = Alignment(horizontal="center")
+        
+        # Veri satırları
+        row = 2
+        for aidat in queryset:
+            ws.cell(row=row, column=1, value=aidat.id)
+            ws.cell(row=row, column=2, value=str(aidat.daire))
+            ws.cell(row=row, column=3, value=f"{aidat.ay}/{aidat.yil}")
+            ws.cell(row=row, column=4, value=aidat.get_aidat_tipi_display())
+            ws.cell(row=row, column=5, value=aidat.gider.get_tip_display() if aidat.gider else "-")
+            ws.cell(row=row, column=6, value=float(aidat.tutar))
+            ws.cell(row=row, column=7, value="Ödendi" if aidat.odeme_yapildi_mi else "Ödenmedi")
+            ws.cell(row=row, column=8, value=aidat.odeme_tarihi.strftime("%d/%m/%Y") if aidat.odeme_tarihi else "-")
+            ws.cell(row=row, column=9, value=aidat.kim_odedi.ad_soyad if aidat.kim_odedi else "-")
+            ws.cell(row=row, column=10, value=aidat.aciklama)
+            row += 1
+        
+        # Sütun genişliklerini ayarla
+        for col in range(1, 11):
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 20
+        
+        # Response oluştur
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename=aidat_raporu_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        wb.save(response)
+        return response
+    aidat_raporu_excel.short_description = "Seçili aidatları Excel'e aktar"
     
     def changelist_view(self, request, extra_context=None):
-        # Filtrelenmiş queryset'i al (mevcut filtrelerle birlikte)
+        from django.db.models import Sum
         queryset = self.get_queryset(request)
         
-        # Request'teki GET parametrelerini al (filtreleri uygula)
-        from django.contrib.admin.options import IncorrectLookupParameters
+        # Filtre uygulandı mı kontrol et
         try:
-            cl = self.get_changelist_instance(request)
+            from django.contrib.admin.views.main import ChangeList
+            cl = ChangeList(request, self.model, self.list_display, self.list_display_links,
+                            self.list_filter, self.date_hierarchy, self.search_fields,
+                            self.list_select_related, self.list_per_page, self.list_max_show_all,
+                            self.list_editable, self, self.sortable_by)
             queryset = cl.get_queryset(request)
-        except (IncorrectLookupParameters, TypeError):
+        except:
             pass
         
-        # Toplam hesaplamaları
-        from django.db.models import Sum
         toplam_aidat = queryset.aggregate(Sum('tutar'))['tutar__sum'] or 0
-        toplam_odenmis = queryset.filter(odendi_mi=True).aggregate(Sum('tutar'))['tutar__sum'] or 0
-        toplam_odenmemis = queryset.filter(odendi_mi=False).aggregate(Sum('tutar'))['tutar__sum'] or 0
+        toplam_odenmis = queryset.filter(odeme_yapildi_mi=True).aggregate(Sum('tutar'))['tutar__sum'] or 0
+        toplam_odenmemis = queryset.filter(odeme_yapildi_mi=False).aggregate(Sum('tutar'))['tutar__sum'] or 0
+        
+        # Gider tipine göre istatistik
+        gider_istatistik = []
+        if 'gider__tip' in request.GET:
+            gider_tipi = request.GET.get('gider__tip')
+            if gider_tipi:
+                gider_aidat = queryset.filter(gider__tip=gider_tipi)
+                gider_istatistik = {
+                    'tip': gider_tipi,
+                    'toplam': gider_aidat.aggregate(Sum('tutar'))['tutar__sum'] or 0,
+                    'odenmis': gider_aidat.filter(odeme_yapildi_mi=True).aggregate(Sum('tutar'))['tutar__sum'] or 0,
+                    'sayi': gider_aidat.count(),
+                    'odenmis_sayi': gider_aidat.filter(odeme_yapildi_mi=True).count(),
+                }
         
         extra_context = extra_context or {}
         extra_context['toplam_aidat'] = toplam_aidat
         extra_context['toplam_odenmis'] = toplam_odenmis
         extra_context['toplam_odenmemis'] = toplam_odenmemis
         extra_context['odenme_orani'] = (toplam_odenmis / toplam_aidat * 100) if toplam_aidat > 0 else 0
+        extra_context['gider_istatistik'] = gider_istatistik
         
         return super().changelist_view(request, extra_context=extra_context)
 
@@ -235,6 +689,17 @@ class RaporlarAdmin(admin.AdminSite):
         ]
         return super().index(request, extra_context)
     
+    def api_daireler(self, request):
+        from django.http import JsonResponse
+        from bina.models import Daire
+        
+        blok_id = request.GET.get('blok')
+        if blok_id:
+            daireler = Daire.objects.filter(blok_id=blok_id).order_by('daire_no')
+            data = [{'id': d.id, 'ad': f"{d.blok.get_blok_adi_display()}-{d.daire_no}"} for d in daireler]
+            return JsonResponse(data, safe=False)
+        return JsonResponse([], safe=False)
+
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
@@ -248,6 +713,7 @@ class RaporlarAdmin(admin.AdminSite):
             path('bina/banka-hareket/import-excel/', self.admin_view(self.import_banka_hareket_excel), name='import_banka_hareket_excel'),
             path('yedekle/', self.admin_view(self.veritabani_yedekle), name='veritabani_yedekle'),
             path('yedekle/yukle/', self.admin_view(self.yedekten_yukle), name='yedekten_yukle'),
+            path('api/daireler/', self.admin_view(self.api_daireler), name='api_daireler'),
         ]
         return custom_urls + urls
     
@@ -573,7 +1039,7 @@ class RaporlarAdmin(admin.AdminSite):
                 depozito__isnull=False,
                 tarih__range=[baslangic, bitis]
             )
-            aidatlar = Aidat.objects.filter(odeme_tarihi__range=[baslangic, bitis], odendi_mi=True)
+            aidatlar = Aidat.objects.filter(odeme_tarihi__range=[baslangic, bitis], odeme_yapildi_mi=True)
             donem = f"{baslangic.strftime('%d/%m/%Y')} - {bitis.strftime('%d/%m/%Y')}"
         elif ay:
             giderler = Gider.objects.filter(tarih__year=yil, tarih__month=ay)
@@ -583,7 +1049,7 @@ class RaporlarAdmin(admin.AdminSite):
                 tarih__year=yil,
                 tarih__month=ay
             )
-            aidatlar = Aidat.objects.filter(yil=yil, ay=ay, odendi_mi=True)
+            aidatlar = Aidat.objects.filter(yil=yil, ay=ay, odeme_yapildi_mi=True)
             donem = f"{ay}/{yil}"
         else:
             giderler = Gider.objects.filter(tarih__year=yil)
@@ -592,7 +1058,7 @@ class RaporlarAdmin(admin.AdminSite):
                 depozito__isnull=False,
                 tarih__year=yil
             )
-            aidatlar = Aidat.objects.filter(yil=yil, odendi_mi=True)
+            aidatlar = Aidat.objects.filter(yil=yil, odeme_yapildi_mi=True)
             donem = f"{yil} Yılı"
         
         toplam_aidat_geliri = aidatlar.aggregate(Sum('tutar'))['tutar__sum'] or 0
@@ -725,6 +1191,10 @@ class RaporlarAdmin(admin.AdminSite):
     def aidat_durumu_raporu(self, request):
         yil = request.GET.get('yil', datetime.now().year)
         ay = request.GET.get('ay', None)
+        blok_id = request.GET.get('blok', None)      # YENİ
+        daire_id = request.GET.get('daire', None)    # YENİ
+        odeme_durumu = request.GET.get('odeme_durumu', None)  # YENİ
+        aidat_tipi = request.GET.get('aidat_tipi', None)      # YENİ
         hizli_tarih = request.GET.get('hizli_tarih', None)
         baslangic_tarih = request.GET.get('baslangic_tarih', '')
         bitis_tarih = request.GET.get('bitis_tarih', '')
@@ -784,34 +1254,76 @@ class RaporlarAdmin(admin.AdminSite):
             aidatlar = Aidat.objects.filter(yil=yil)
             donem = f"{yil} Yılı"
         
-        odenen = aidatlar.filter(odendi_mi=True).aggregate(Sum('tutar'))['tutar__sum'] or 0
-        odenmeyen = aidatlar.filter(odendi_mi=False).aggregate(Sum('tutar'))['tutar__sum'] or 0
+        # ========== YENİ EKLENEN FİLTRELER ==========
+        if blok_id:
+            aidatlar = aidatlar.filter(daire__blok__id=blok_id)
+        if daire_id:
+            aidatlar = aidatlar.filter(daire__id=daire_id)
+        if odeme_durumu == 'odendi':
+            aidatlar = aidatlar.filter(odeme_yapildi_mi=True)
+        elif odeme_durumu == 'odenmedi':
+            aidatlar = aidatlar.filter(odeme_yapildi_mi=False)
+        if aidat_tipi:
+            aidatlar = aidatlar.filter(aidat_tipi=aidat_tipi)
+        # ===========================================
+        
+        odenen = aidatlar.filter(odeme_yapildi_mi=True).aggregate(Sum('tutar'))['tutar__sum'] or 0
+        odenmeyen = aidatlar.filter(odeme_yapildi_mi=False).aggregate(Sum('tutar'))['tutar__sum'] or 0
         toplam = odenen + odenmeyen
         
+        # Daire bazlı durum - Filtrelere göre daireleri göster
+        if daire_id:
+            daireler = Daire.objects.filter(id=daire_id)
+        elif blok_id:
+            daireler = Daire.objects.filter(blok__id=blok_id)
+        else:
+            daireler = Daire.objects.all()
+        
         daire_durum = []
-        for daire in Daire.objects.all():
+        for daire in daireler:
             daire_aidat = aidatlar.filter(daire=daire)
-            odenen_borc = daire_aidat.filter(odendi_mi=True).aggregate(Sum('tutar'))['tutar__sum'] or 0
+            odenen_borc = daire_aidat.filter(odeme_yapildi_mi=True).aggregate(Sum('tutar'))['tutar__sum'] or 0
             toplam_borc = daire_aidat.aggregate(Sum('tutar'))['tutar__sum'] or 0
-            if toplam_borc > 0:
+            kalan = toplam_borc - odenen_borc
+            
+            if toplam_borc > 0 or daire_aidat.exists():
+                # Durum belirleme
+                if kalan == 0:
+                    durum = "✅ Ödendi"
+                elif odenen_borc > 0:
+                    durum = "⚠️ Kısmi Ödendi"
+                else:
+                    durum = "❌ Ödenmedi"
+                
                 daire_durum.append({
-                    'daire': f"{daire.blok.blok_adi}-{daire.daire_no}",
+                    'daire': f"{daire.blok.get_blok_adi_display()}-{daire.daire_no}",
                     'daire_tipi': daire.get_daire_tipi_display(),
                     'toplam_borc': toplam_borc,
                     'odenen': odenen_borc,
-                    'kalan': toplam_borc - odenen_borc,
+                    'kalan': kalan,
                     'oran': (odenen_borc / toplam_borc * 100) if toplam_borc > 0 else 0,
+                    'aidat_sayisi': daire_aidat.count(),
+                    'odenen_sayisi': daire_aidat.filter(odeme_yapildi_mi=True).count(),
+                    'durum': durum,  # ← BURASI ÖNEMLİ
                 })
         
         aylar = {1: 'Ocak', 2: 'Şubat', 3: 'Mart', 4: 'Nisan', 5: 'Mayıs', 6: 'Haziran',
                 7: 'Temmuz', 8: 'Ağustos', 9: 'Eylül', 10: 'Ekim', 11: 'Kasım', 12: 'Aralık'}
+        
+        # Filtreler için blok listesi
+        from bina.models import Blok
+        bloklar = Blok.objects.all()
         
         context = {
             'title': 'Aidat Durumu Raporu',
             'site_header': self.site_header,
             'yil': yil,
             'ay': ay,
-            'ay_adi': aylar.get(ay, ''),
+            'ay_adi': aylar.get(int(ay), '') if ay else '',
+            'blok_id': blok_id,
+            'daire_id': daire_id,
+            'odeme_durumu': odeme_durumu,
+            'aidat_tipi': aidat_tipi,
             'hizli_tarih': hizli_tarih,
             'baslangic_tarih': baslangic_tarih,
             'bitis_tarih': bitis_tarih,
@@ -821,6 +1333,9 @@ class RaporlarAdmin(admin.AdminSite):
             'odenen_orani': (odenen / toplam * 100) if toplam > 0 else 0,
             'odunmeyen': odenmeyen,
             'daire_durum': daire_durum,
+            'bloklar': bloklar,
+            'secili_blok': Blok.objects.filter(id=blok_id).first() if blok_id else None,
+            'secili_daire': Daire.objects.filter(id=daire_id).first() if daire_id else None,
         }
         return render(request, 'admin/aidat_durumu_raporu.html', context)
     
@@ -908,7 +1423,7 @@ class RaporlarAdmin(admin.AdminSite):
         toplam_blok = Blok.objects.count()
         bankalar = Banka.objects.all()
         toplam_bakiye = sum([float(b.guncel_bakiye) for b in bankalar])
-        odenmemis_aidat = Aidat.objects.filter(odendi_mi=False).aggregate(Sum('tutar'))['tutar__sum'] or 0
+        odenmemis_aidat = Aidat.objects.filter(odeme_yapildi_mi=False).aggregate(Sum('tutar'))['tutar__sum'] or 0
         bu_yil = datetime.now().year
         yillik_gelir = BankaHareket.objects.filter(tarih__year=bu_yil, hareket_tipi='gelir').aggregate(Sum('tutar'))['tutar__sum'] or 0
         yillik_gider = BankaHareket.objects.filter(tarih__year=bu_yil, hareket_tipi='gider').aggregate(Sum('tutar'))['tutar__sum'] or 0
@@ -1110,69 +1625,634 @@ class AsgariUcretAdmin(admin.ModelAdmin):
     list_display = ['yil', 'brut_ucret', 'isci_sgk_payi', 'isveren_sgk_payi']
     list_editable = ['brut_ucret']
 
-class GiderAdmin(admin.ModelAdmin):
-    list_display = ('tip', 'tutar', 'tarih', 'hesap_tipi', 'aciklama')
-    list_filter = ('tip', 'tarih', 'hesap_tipi')
+class GiderAdmin(TarihFiltresiMixin, admin.ModelAdmin):
+    tarih_alan = 'tarih'
+    list_display = ('tip', 'tutar', 'tarih', 'hesap_tipi', 'blok', 'muaf_daire_sayisi', 'aciklama', 'taksitlendir_button')
+    list_filter = ('tip', 'tarih', 'hesap_tipi', 'blok')
     search_fields = ('aciklama', 'fatura_no')
-    date_hierarchy = 'tarih'
+    filter_horizontal = ('muaf_daireler',)  # Muaf daireleri güzel bir arayüzle seçmek için
+    actions = ['aidatlari_yeniden_olustur', 'aidatlari_temizle', 'blok_bazli_gider_olustur']
     
-    actions = ['aidatlari_yeniden_olustur']
+    fieldsets = (
+        ('Temel Bilgiler', {
+            'fields': ('tip', 'tutar', 'tarih', 'hesap_tipi', 'blok')
+        }),
+        ('Fatura Bilgileri', {
+            'fields': ('fatura_no', 'fatura_donemi', 'son_odeme_tarihi', 'odeme_tarihi'),
+            'classes': ('collapse',)
+        }),
+        ('İlişkiler', {
+            'fields': ('abonelik', 'firma'),
+            'classes': ('collapse',)
+        }),
+        ('Muafiyet Ayarları', {
+            'fields': ('muaf_daireler',),
+            'description': 'Bu giderden muaf tutulacak daireleri seçin. Seçili dairelere aidat yansıtılmaz.',
+            'classes': ('wide',)
+        }),
+        ('Açıklama', {
+            'fields': ('aciklama',),
+        }),
+    )
     
-    def save_model(self, request, obj, form, change):
-        if obj.hesap_tipi == 'sabit_aidat':
-            messages.info(request, 'Bu gider Sabit Aidat kapsamında işaretlendi. Dairelere ekstra borç yansıtılmayacaktır.')
-        super().save_model(request, obj, form, change)
+    def taksitlendir_button(self, obj):
+        from django.utils.html import format_html
+        from django.urls import reverse
+        url = reverse('admin:gider_taksitlendir', args=[obj.id])
+        return format_html('<a href="{}" style="background:#28a745; color:white; padding:5px 10px; border-radius:3px; text-decoration:none;">💰 Taksitlendir</a>', url)
+    taksitlendir_button.short_description = 'Taksitlendir'
+    taksitlendir_button.allow_tags = True
+
+    def muaf_daire_sayisi(self, obj):
+        return obj.muaf_daireler.count()
+    muaf_daire_sayisi.short_description = 'Muaf Daire Sayısı'
     
     def aidatlari_yeniden_olustur(self, request, queryset):
+        """Seçili giderler için aidatları yeniden oluştur (önce temizle)"""
+        from bina.models import Aidat, DepozitoHareket, GiderTaksit
+        
+        print("=" * 50)
+        print("AİDAT YENİDEN OLUŞTURMA BAŞLADI")
+        print(f"Seçili gider sayısı: {queryset.count()}")
+        print("=" * 50)
+        
         for gider in queryset:
-            if gider.hesap_tipi != 'sabit_aidat':
+            #if gider.hesap_tipi != 'sabit_aidat':
+                # Önce eski aidatları ve depozito hareketlerini temizle
+                eski_aidat = Aidat.objects.filter(gider=gider).count()
+                eski_depo = DepozitoHareket.objects.filter(gider=gider).count()
+                eski_taksit = GiderTaksit.objects.filter(gider=gider).count()
+                
                 Aidat.objects.filter(gider=gider).delete()
+                DepozitoHareket.objects.filter(gider=gider).delete()
+                GiderTaksit.objects.filter(gider=gider).delete()
+                
+                print(f"🗑️ {gider}: {eski_aidat} aidat, {eski_depo} depozito, {eski_taksit} taksit temizlendi")
+                
+                # Yeniden oluştur
                 gider.aidatlari_olustur()
-        self.message_user(request, f"{queryset.count()} gider için aidatlar yeniden oluşturuldu.")
-    aidatlari_yeniden_olustur.short_description = "Seçili giderler için aidatları yeniden oluştur"
+                
+                print(f"✅ {gider}: Yeniden oluşturuldu")
+            #else:
+             #   print(f"⚠️ {gider} sabit aidat gideri, atlanıyor...")
+        
+        self.message_user(request, f"✅ {queryset.count()} gider için aidatlar yeniden oluşturuldu.")
 
-    def changelist_view(self, request, extra_context=None):
-        queryset = self.get_queryset(request)
-        # Filtreleri uygulayalım
-        try:
-            from django.contrib.admin.views.main import ChangeList
-            cl = ChangeList(request, self.model, self.list_display, self.list_display_links,
-                            self.list_filter, self.date_hierarchy, self.search_fields,
-                            self.list_select_related, self.list_per_page, self.list_max_show_all,
-                            self.list_editable, self, self.sortable_by)
-            queryset = cl.get_queryset(request)
-        except:
-            pass
-        from django.db.models import Sum
-        toplam = queryset.aggregate(Sum('tutar'))['tutar__sum'] or 0
-        extra_context = extra_context or {}
-        extra_context['toplam_gider'] = toplam
-        return super().changelist_view(request, extra_context=extra_context)
+    aidatlari_yeniden_olustur.short_description = "Seçili giderler için aidatları yeniden oluştur (önce temizle)"
+    
+    def aidatlari_temizle(self, request, queryset):
+        """Seçili giderlerin aidatlarını ve depozito hareketlerini temizle"""
+        from bina.models import Aidat, DepozitoHareket, GiderTaksit
+        
+        print("=" * 50)
+        print("AİDAT TEMİZLEME BAŞLADI")
+        print(f"Seçili gider sayısı: {queryset.count()}")
+        print("=" * 50)
+        
+        temizlenen_aidat = 0
+        temizlenen_depozito = 0
+        temizlenen_taksit = 0
+        
+        for gider in queryset:
+            #if gider.hesap_tipi != 'sabit_aidat':
+                # Aidatları sil
+                aidat_count = Aidat.objects.filter(gider=gider).count()
+                aidat_silinen = Aidat.objects.filter(gider=gider).delete()
+                temizlenen_aidat += aidat_silinen[0]
+                
+                # Depozito hareketlerini sil
+                depo_count = DepozitoHareket.objects.filter(gider=gider).count()
+                depo_silinen = DepozitoHareket.objects.filter(gider=gider).delete()
+                temizlenen_depozito += depo_silinen[0]
+                
+                # Taksitleri sil
+                taksit_count = GiderTaksit.objects.filter(gider=gider).count()
+                taksit_silinen = GiderTaksit.objects.filter(gider=gider).delete()
+                temizlenen_taksit += taksit_silinen[0]
+                
+                print(f"✅ {gider}: {aidat_count} aidat, {depo_count} depozito hareketi, {taksit_count} taksit silindi")
+            #else:
+             #   print(f"⚠️ {gider} sabit aidat gideri, atlanıyor...")
+        
+        self.message_user(
+            request, 
+            f"✅ Temizleme tamamlandı!\n"
+            f"   Silinen aidat: {temizlenen_aidat}\n"
+            f"   Silinen depozito hareketi: {temizlenen_depozito}\n"
+            f"   Silinen taksit: {temizlenen_taksit}"
+        )
+        
+        print(f"\nTOPLAM: {temizlenen_aidat} aidat, {temizlenen_depozito} depozito, {temizlenen_taksit} taksit silindi")
+        print("=" * 50)
 
+    aidatlari_temizle.short_description = "Seçili giderlerin aidatlarını ve depozito hareketlerini temizle"
+
+    def blok_bazli_gider_olustur(self, request, queryset):
+        """Seçili gideri blok bazlı olarak böl"""
+        for gider in queryset:
+            if not gider.blok and gider.tip == 'asansor':
+                # Her blok için ayrı gider oluştur
+                bloklar = Blok.objects.all()
+                for blok in bloklar:
+                    yeni_gider = Gider.objects.create(
+                        tip=gider.tip,
+                        tutar=round(gider.tutar / bloklar.count(), 2),
+                        tarih=gider.tarih,
+                        hesap_tipi=gider.hesap_tipi,
+                        blok=blok,
+                        aciklama=f"{gider.aciklama} - {blok.get_blok_adi_display()} Blok",
+                        fatura_no=gider.fatura_no,
+                        son_odeme_tarihi=gider.son_odeme_tarihi,
+                    )
+                    print(f"✅ {blok.get_blok_adi_display()} Blok için gider oluşturuldu: {yeni_gider.tutar} TL")
+                
+                # Orijinal gideri sil veya pasif yap
+                gider.delete()
+                print(f"Orijinal gider silindi.")
+
+    def gideri_taksitlendir(self, request, queryset):
+        from django.shortcuts import render
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+        from bina.models import GiderTaksit, Aidat, DepozitoHareket
+        from decimal import Decimal
+        from datetime import date
+        import math
+        
+        print("=" * 60)
+        print("🚀 TAKSİTLENDİRME METODU ÇAĞRILDI")
+        print(f"Request method: {request.method}")
+        print(f"Seçili gider sayısı: {queryset.count()}")
+        print("=" * 60)
+        
+        
+        if request.method == 'POST':
+            print("POST request geldi!")
+            print(f"POST verileri: {request.POST.keys()}")
+            
+            taksit_tipi = request.POST.get('taksit_tipi', 'esit')
+            taksit_sayisi = int(request.POST.get('taksit_sayisi', 3))
+            baslangic_ay = int(request.POST.get('baslangic_ay', date.today().month))
+            baslangic_yil = int(request.POST.get('baslangic_yil', date.today().year))
+            aciklama_ek = ""
+            
+            print(f"Taksit tipi: {taksit_tipi}")
+            print(f"Taksit sayısı: {taksit_sayisi}")
+            
+            for gider in queryset:
+                toplam_tutar = float(gider.tutar)
+                taksit_tutarlari = []
+                
+                if taksit_tipi == 'esit':
+                    # Eşit taksit
+                    esit_tutar = toplam_tutar / taksit_sayisi
+                    for i in range(taksit_sayisi):
+                        if i == taksit_sayisi - 1:
+                            tutar = round(toplam_tutar - sum(taksit_tutarlari), 2)
+                        else:
+                            tutar = round(esit_tutar, 2)
+                        taksit_tutarlari.append(tutar)
+                    print(f"Eşit taksitler: {taksit_tutarlari}")
+                    
+                elif taksit_tipi == 'manuel':
+                    # Manuel taksit - önce hidden input'dan al
+                    manuel_str = request.POST.get('manuel_taksitler', '')
+                    if manuel_str:
+                        manuel_list = [float(x.strip()) for x in manuel_str.split(',')]
+                        taksit_tutarlari = manuel_list
+                    else:
+                        # Alternatif: direkt input'lardan al
+                        for i in range(1, taksit_sayisi + 1):
+                            tutar_str = request.POST.get(f'taksit_{i}', '0')
+                            try:
+                                tutar = float(tutar_str.replace(',', '.'))
+                            except:
+                                tutar = 0
+                            taksit_tutarlari.append(tutar)
+                    print(f"Manuel taksitler: {taksit_tutarlari}")
+                    
+                elif taksit_tipi == 'yuzde':
+                    # Yüzde bazlı taksit
+                    yuzde_str = request.POST.get('yuzdeler', '')
+                    if yuzde_str:
+                        yuzdeler = [float(x.strip()) for x in yuzde_str.split(',')]
+                    else:
+                        yuzdeler = []
+                        for i in range(1, taksit_sayisi + 1):
+                            yuzde_str = request.POST.get(f'yuzde_{i}', '0')
+                            try:
+                                yuzde = float(yuzde_str.replace(',', '.'))
+                            except:
+                                yuzde = 0
+                            yuzdeler.append(yuzde)
+                    
+                    for i, yuzde in enumerate(yuzdeler):
+                        if i == taksit_sayisi - 1:
+                            tutar = round(toplam_tutar - sum(taksit_tutarlari), 2)
+                        else:
+                            tutar = round(toplam_tutar * yuzde / 100, 2)
+                        taksit_tutarlari.append(tutar)
+                    print(f"Yüzde taksitler: {taksit_tutarlari}")
+                
+                # Eski kayıtları temizle
+                Aidat.objects.filter(gider=gider).delete()
+                DepozitoHareket.objects.filter(gider=gider).delete()
+                GiderTaksit.objects.filter(gider=gider).delete()
+                
+                # Taksitleri oluştur
+                for i, taksit_tutar in enumerate(taksit_tutarlari):
+                    taksit_ay = baslangic_ay + i
+                    taksit_yil = baslangic_yil
+                    while taksit_ay > 12:
+                        taksit_ay -= 12
+                        taksit_yil += 1
+                    taksit_tarihi = date(taksit_yil, taksit_ay, 1)
+                    
+                    taksit = GiderTaksit.objects.create(
+                        gider=gider,
+                        taksit_no=i + 1,
+                        tutar=Decimal(str(taksit_tutar)),
+                        tarih=taksit_tarihi,
+                        aciklama=f"{gider.get_tip_display()} - Taksit {i+1}/{taksit_sayisi} - {taksit_tutar:.2f} TL"
+                    )
+                    print(f"  ✅ Taksit {i+1}: {taksit_tutar} TL - {taksit_tarihi}")
+                    
+                    try:
+                        self._create_taksit_aidat(gider, taksit, taksit_tarihi, aciklama_ek)
+                    except Exception as e:
+                        print(f"     ❌ Aidat hatası: {e}")
+                
+                self.message_user(request, f"✅ {gider} - {taksit_sayisi} taksite ayrıldı")
+            
+            return HttpResponseRedirect(reverse('admin:bina_gider_changelist'))
+        
+        # GET request için template göster
+        from datetime import datetime
+        return render(request, 'admin/gider_taksit.html', {
+            'giderler': queryset,
+            'now': datetime.now()
+        })
+    
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path('<int:gider_id>/taksitlendir/', self.admin_site.admin_view(self.taksitlendir_sayfasi), name='gider_taksitlendir'),
+        ]
+        return custom_urls + urls
+
+    def taksitlendir_sayfasi(self, request, gider_id):
+        """Tek bir gider için taksitlendirme sayfası"""
+        from bina.models import Gider, GiderTaksit, Aidat, DepozitoHareket
+        from decimal import Decimal
+        from datetime import date
+        from django.shortcuts import render, get_object_or_404
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+        
+        gider = get_object_or_404(Gider, id=gider_id)
+        
+        # Debug için yazdır
+        print(f"Gider ID: {gider.id}")
+        print(f"Gider Tutar: {gider.tutar}")
+        print(f"Gider Tip: {gider.get_tip_display()}")
+        
+        if request.method == 'POST':
+            # ... POST işlemleri aynı kalacak ...
+            taksit_tipi = request.POST.get('taksit_tipi', 'esit')
+            taksit_sayisi = int(request.POST.get('taksit_sayisi', 3))
+            baslangic_ay = int(request.POST.get('baslangic_ay', date.today().month))
+            baslangic_yil = int(request.POST.get('baslangic_yil', date.today().year))
+            
+            toplam_tutar = float(gider.tutar)
+            taksit_tutarlari = []
+            
+            if taksit_tipi == 'esit':
+                esit_tutar = toplam_tutar / taksit_sayisi
+                for i in range(taksit_sayisi):
+                    if i == taksit_sayisi - 1:
+                        tutar = round(toplam_tutar - sum(taksit_tutarlari), 2)
+                    else:
+                        tutar = round(esit_tutar, 2)
+                    taksit_tutarlari.append(tutar)
+                    
+            elif taksit_tipi == 'manuel':
+                manuel_str = request.POST.get('manuel_taksitler', '')
+                if manuel_str:
+                    taksit_tutarlari = [float(x) for x in manuel_str.split(',')]
+                else:
+                    for i in range(1, taksit_sayisi + 1):
+                        tutar_str = request.POST.get(f'taksit_{i}', '0')
+                        try:
+                            tutar = float(tutar_str.replace(',', '.'))
+                        except:
+                            tutar = 0
+                        taksit_tutarlari.append(tutar)
+                    
+            elif taksit_tipi == 'yuzde':
+                yuzde_str = request.POST.get('yuzdeler', '')
+                if yuzde_str:
+                    yuzdeler = [float(x) for x in yuzde_str.split(',')]
+                    for i, yuzde in enumerate(yuzdeler):
+                        if i == taksit_sayisi - 1:
+                            tutar = round(toplam_tutar - sum(taksit_tutarlari), 2)
+                        else:
+                            tutar = round(toplam_tutar * yuzde / 100, 2)
+                        taksit_tutarlari.append(tutar)
+                else:
+                    for i in range(1, taksit_sayisi + 1):
+                        yuzde_str = request.POST.get(f'yuzde_{i}', '0')
+                        try:
+                            yuzde = float(yuzde_str.replace(',', '.'))
+                        except:
+                            yuzde = 0
+                        if i == taksit_sayisi:
+                            tutar = round(toplam_tutar - sum(taksit_tutarlari), 2)
+                        else:
+                            tutar = round(toplam_tutar * yuzde / 100, 2)
+                        taksit_tutarlari.append(tutar)
+            
+            # Eski kayıtları temizle
+            Aidat.objects.filter(gider=gider).delete()
+            DepozitoHareket.objects.filter(gider=gider).delete()
+            GiderTaksit.objects.filter(gider=gider).delete()
+            
+            # Taksitleri oluştur
+            for i, taksit_tutar in enumerate(taksit_tutarlari):
+                taksit_ay = baslangic_ay + i
+                taksit_yil = baslangic_yil
+                while taksit_ay > 12:
+                    taksit_ay -= 12
+                    taksit_yil += 1
+                taksit_tarihi = date(taksit_yil, taksit_ay, 1)
+                
+                taksit = GiderTaksit.objects.create(
+                    gider=gider,
+                    taksit_no=i + 1,
+                    tutar=Decimal(str(taksit_tutar)),
+                    tarih=taksit_tarihi,
+                    aciklama=f"{gider.get_tip_display()} - Taksit {i+1}/{taksit_sayisi} - {taksit_tutar:.2f} TL"
+                )
+                
+                self._create_taksit_aidat(gider, taksit, taksit_tarihi, "")
+            
+            self.message_user(request, f"✅ {gider} - {taksit_sayisi} taksite ayrıldı")
+            return HttpResponseRedirect(reverse('admin:bina_gider_changelist'))
+        
+        # GET isteği için form göster
+        from datetime import datetime
+        return render(request, 'admin/gider_taksit.html', {
+            'giderler': [gider],
+            'gider_tutar': float(gider.tutar),  # Açıkça tutarı gönder
+            'gider_adi': str(gider),
+            'now': datetime.now()
+        })
+
+
+    def _create_taksit_aidat(self, gider, taksit, taksit_tarihi, aciklama_ek=""):
+        """Tek bir taksit için aidat oluştur"""
+        from decimal import Decimal
+        import math
+        from bina.models import Daire, Aidat, SiteAyarlari
+        
+        print(f"    → Aidat oluşturuluyor: {gider.get_tip_display()} - Taksit {taksit.taksit_no}")
+        
+        # Sabit aidat kontrolü
+        if gider.hesap_tipi == 'sabit_aidat':
+            print(f"      ⚠️ Sabit aidat, atlanıyor")
+            return
+        
+        # Demirbaş gideri kontrolü
+        muaf_alan = 'demirbas_giderlerinden_muaf'
+        
+        # Blok bazlı filtreleme
+        if gider.blok:
+            daireler = Daire.objects.filter(blok=gider.blok, **{muaf_alan: False})
+            toplam_arsa_pay = sum([d.arsa_pay_pay for d in daireler])
+            print(f"      Blok: {gider.blok}, Daire sayısı: {daireler.count()}")
+        else:
+            daireler = Daire.objects.filter(**{muaf_alan: False})
+            toplam_arsa_pay = sum([d.arsa_pay_pay for d in daireler])
+            print(f"      Tüm bloklar, Daire sayısı: {daireler.count()}")
+        
+        if toplam_arsa_pay == 0:
+            toplam_arsa_pay = 1
+        
+        site_ayar = SiteAyarlari.objects.first()
+        yuvarlama_kat = site_ayar.gider_yuvarlama_kat if site_ayar and site_ayar.gider_yuvarlama_aktif else 0
+        yuvarlama_tip = site_ayar.gider_yuvarlama_tip if site_ayar else 'yukari'
+        
+        olusturulan = 0
+        for daire in daireler:
+            oran = float(daire.arsa_pay_pay) / toplam_arsa_pay
+            tutar = float(taksit.tutar) * oran
+            
+            if tutar == 0:
+                continue
+            
+            if yuvarlama_kat > 0:
+                if yuvarlama_tip == 'yukari':
+                    yuvarlanan = math.ceil(tutar / yuvarlama_kat) * yuvarlama_kat
+                elif yuvarlama_tip == 'asagi':
+                    yuvarlanan = math.floor(tutar / yuvarlama_kat) * yuvarlama_kat
+                else:
+                    yuvarlanan = round(tutar / yuvarlama_kat) * yuvarlama_kat
+            else:
+                yuvarlanan = tutar
+            
+            fark = round(yuvarlanan - tutar, 2)
+            
+            # Açıklama oluştur
+            aciklama = f"{gider.get_tip_display()} - Taksit {taksit.taksit_no}/{gider.taksitler.count()} - {gider.tarih.strftime('%d/%m/%Y')} (Hesap: {tutar:.2f} TL → Ödenecek: {yuvarlanan:.2f} TL)"
+            if aciklama_ek:
+                aciklama += f" - {aciklama_ek}"
+            
+            Aidat.objects.create(
+                daire=daire,
+                ay=taksit.tarih.month,
+                yil=taksit.tarih.year,
+                aidat_tipi='ekstra',
+                gider=gider,
+                tutar=Decimal(str(yuvarlanan)),
+                yuvarlama_farki=Decimal(str(fark)),
+                tahakkuk_tarihi=taksit.tarih,
+                aciklama=aciklama
+            )
+            olusturulan += 1
+        
+        print(f"      ✅ {olusturulan} aidat oluşturuldu")
+
+    
+        
 class DepozitoAdmin(admin.ModelAdmin):
-    list_display = ('daire', 'kisi', 'tutar', 'alinma_tarihi', 'durum')
+    list_display = ('daire', 'kisi', 'tutar', 'alinma_tarihi', 'durum', 'guncel_bakiye', 'hareket_ekle_button')
     list_filter = ('durum', 'alinma_tarihi')
     search_fields = ('daire__blok__blok_adi', 'daire__daire_no', 'kisi__ad_soyad')
+    readonly_fields = ('guncel_bakiye',)
+    
+    def hareket_ekle_button(self, obj):
+        from django.utils.html import format_html
+        from django.urls import reverse
+        url = reverse('admin:depozito_hareket_ekle', args=[obj.id])
+        return format_html('<a href="{}" style="background:#28a745; color:white; padding:5px 10px; border-radius:3px; text-decoration:none;">➕ Hareket Ekle</a>', url)
+    hareket_ekle_button.short_description = 'İşlem'
+    hareket_ekle_button.allow_tags = True
 
-    def changelist_view(self, request, extra_context=None):
-        queryset = self.get_queryset(request)
-        try:
-            from django.contrib.admin.views.main import ChangeList
-            cl = ChangeList(request, self.model, self.list_display, self.list_display_links,
-                            self.list_filter, self.date_hierarchy, self.search_fields,
-                            self.list_select_related, self.list_per_page, self.list_max_show_all,
-                            self.list_editable, self, self.sortable_by)
-            queryset = cl.get_queryset(request)
-        except:
-            pass
-        from django.db.models import Sum
-        alinan = queryset.filter(durum='alindi').aggregate(Sum('tutar'))['tutar__sum'] or 0
-        iade = queryset.filter(durum='iade_edildi').aggregate(Sum('tutar'))['tutar__sum'] or 0
-        extra_context = extra_context or {}
-        extra_context['alinan_depozito'] = alinan
-        extra_context['iade_depozito'] = iade
-        extra_context['net_depozito'] = alinan - iade
-        return super().changelist_view(request, extra_context=extra_context)
+    fieldsets = (
+        ('Depozito Bilgileri', {
+            'fields': ('daire', 'kisi', 'tutar', 'alinma_tarihi', 'durum', 'banka')
+        }),
+        ('İade Bilgileri', {
+            'fields': ('iade_tarihi', 'iade_tutari'),
+            'classes': ('collapse',)
+        }),
+        ('Açıklama', {
+            'fields': ('aciklama',)
+        }),
+        ('Güncel Bakiye', {
+            'fields': ('guncel_bakiye',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def guncel_bakiye(self, obj):
+        """Depozito güncel bakiyesini hesapla (ana + hareketler)"""
+        from .models import DepozitoHareket
+        toplam = float(obj.tutar)
+        hareketler = DepozitoHareket.objects.filter(depozito=obj)
+        for h in hareketler:
+            if h.hareket_tipi == 'ekleme':
+                toplam += float(h.tutar)
+            elif h.hareket_tipi == 'cikarma':
+                toplam -= float(h.tutar)
+        return f"{toplam:.2f} TL"
+    guncel_bakiye.short_description = "Güncel Bakiye (Hareketler Dahil)"
+    
+    def get_urls(self):
+        from django.urls import path
+        from django.shortcuts import redirect
+        from django.contrib import messages
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+        
+        urls = super().get_urls()
+        custom_urls = [
+            path('<int:depozito_id>/hareket-ekle/', self.admin_site.admin_view(self.depozito_hareket_ekle), name='depozito_hareket_ekle'),
+        ]
+        return custom_urls + urls
+    
+    def depozito_hareket_ekle(self, request, depozito_id):
+        """Depozito hareketi ekleme sayfası"""
+        from .models import Depozito, DepozitoHareket
+        from django.shortcuts import render, get_object_or_404
+        from django import forms
+        from decimal import Decimal
+        
+        depozito = get_object_or_404(Depozito, id=depozito_id)
+        
+        class DepozitoHareketForm(forms.Form):
+            hareket_tipi = forms.ChoiceField(
+                choices=[('ekleme', '➕ Ekleme (Depozitoya ekle)'), ('cikarma', '➖ Çıkarma (Depozitodan düş)')],
+                widget=forms.Select(attrs={'class': 'form-control'})
+            )
+            tutar = forms.DecimalField(
+                max_digits=10, 
+                decimal_places=2,
+                widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+            )
+            tarih = forms.DateField(
+                widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+            )
+            aciklama = forms.CharField(
+                widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+                required=False
+            )
+        
+        if request.method == 'POST':
+            form = DepozitoHareketForm(request.POST)
+            if form.is_valid():
+                hareket = DepozitoHareket.objects.create(
+                    depozito=depozito,
+                    hareket_tipi=form.cleaned_data['hareket_tipi'],
+                    tutar=form.cleaned_data['tutar'],
+                    tarih=form.cleaned_data['tarih'],
+                    aciklama=form.cleaned_data['aciklama'] or f"{depozito.daire} - {'Ek depozito' if form.cleaned_data['hareket_tipi'] == 'ekleme' else 'Depozito düşümü'}"
+                )
+                
+                # Yeni bakiyeyi hesapla
+                toplam = float(depozito.tutar)
+                for h in DepozitoHareket.objects.filter(depozito=depozito):
+                    if h.hareket_tipi == 'ekleme':
+                        toplam += float(h.tutar)
+                    else:
+                        toplam -= float(h.tutar)
+                
+                messages.success(
+                    request, 
+                    f"✅ Depozito hareketi eklendi!\n"
+                    f"   İşlem: {'➕ Ekleme' if hareket.hareket_tipi == 'ekleme' else '➖ Çıkarma'}\n"
+                    f"   Tutar: {hareket.tutar} TL\n"
+                    f"   Yeni bakiye: {toplam:.2f} TL"
+                )
+                return HttpResponseRedirect(reverse('admin:bina_depozito_change', args=[depozito.id]))
+        else:
+            from datetime import date
+            form = DepozitoHareketForm(initial={'tarih': date.today()})
+        
+        context = {
+            'title': f'Depozito Hareketi Ekle - {depozito.daire}',
+            'depozito': depozito,
+            'form': form,
+            'opts': self.model._meta,
+            'original': depozito,
+            'has_change_permission': True,
+            'guncel_bakiye': self.guncel_bakiye(depozito),
+        }
+        return render(request, 'admin/depozito_hareket_ekle.html', context)
+    
+    actions = ['toplu_depozito_hareketi_ekle']
+    
+    def toplu_depozito_hareketi_ekle(self, request, queryset):
+        """Seçili depozitolara toplu hareket ekle"""
+        from django.shortcuts import render
+        from django import forms
+        from decimal import Decimal
+        from datetime import date
+        
+        class TopluHareketForm(forms.Form):
+            hareket_tipi = forms.ChoiceField(
+                choices=[('ekleme', '➕ Ekleme (Depozitoya ekle)'), ('cikarma', '➖ Çıkarma (Depozitodan düş)')]
+            )
+            tutar = forms.DecimalField(max_digits=10, decimal_places=2)
+            tarih = forms.DateField(initial=date.today)
+            aciklama = forms.CharField(required=False, widget=forms.Textarea)
+        
+        if 'apply' in request.POST:
+            form = TopluHareketForm(request.POST)
+            if form.is_valid():
+                eklenen = 0
+                for depozito in queryset:
+                    DepozitoHareket.objects.create(
+                        depozito=depozito,
+                        hareket_tipi=form.cleaned_data['hareket_tipi'],
+                        tutar=form.cleaned_data['tutar'],
+                        tarih=form.cleaned_data['tarih'],
+                        aciklama=form.cleaned_data['aciklama'] or f"Toplu işlem - {depozito.daire}"
+                    )
+                    eklenen += 1
+                self.message_user(request, f"✅ {eklenen} depozitoya hareket eklendi.")
+                return HttpResponseRedirect(request.get_full_path())
+        else:
+            form = TopluHareketForm()
+        
+        context = {
+            'title': 'Toplu Depozito Hareketi Ekle',
+            'queryset': queryset,
+            'form': form,
+            'opts': self.model._meta,
+        }
+        return render(request, 'admin/toplu_depozito_hareketi.html', context)
+    toplu_depozito_hareketi_ekle.short_description = "Seçili depozitolara toplu hareket ekle"
 
 class DepozitoHareketAdmin(admin.ModelAdmin):
     list_display = ('depozito', 'hareket_tipi', 'tutar', 'tarih', 'aciklama')
@@ -1354,7 +2434,8 @@ admin_site.register(Personel)
 
 from django.urls import path
 from django.shortcuts import get_object_or_404, redirect
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
+from django.urls import reverse
 from django.contrib import messages
 from django.utils.safestring import mark_safe
 import random
@@ -1595,7 +2676,7 @@ admin_site.register(SiteAyarlari)
 admin_site.register(Blok)
 admin_site.register(Daire, DaireAdmin)
 admin_site.register(Kisi, KisiAdmin)
-admin_site.register(DaireIliskisi)
+admin_site.register(DaireIliskisi, DaireIliskisiAdmin)
 admin_site.register(Aidat, AidatAdmin)
 admin_site.register(Gider, GiderAdmin)
 admin_site.register(Yonetici, YoneticiAdmin)
