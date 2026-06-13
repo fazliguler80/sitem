@@ -6,7 +6,59 @@ import string
 from django.core.mail import send_mail
 from django.conf import settings
 
+# Sabit listeler (constants)
+GIDER_TIPLERI = [
+    ('elektrik', 'Elektrik'),
+    ('su', 'Su'),
+    ('dogalgaz', 'Yakıt / Doğalgaz'),
+    ('yakıt', 'Yakıt/Kalorifer'),
+    ('asansor', 'Asansör Bakım'),
+    ('hidrofor', 'Hidrofor Bakım'),
+    ('jenerator', 'Jeneratör Bakım'),
+    ('yangin', 'Yangın Söndürme'),
+    ('guvenlik', 'Güvenlik'),
+    ('temizlik', 'Temizlik'),
+    ('bahce', 'Bahçe Bakımı'),
+    ('personel', 'Personel Maaşları'),
+    ('sigorta', 'Sigorta'),
+    ('vergi', 'Emlak Vergisi'),
+    ('diger', 'Diğer'),
+]
+
+GIDER_HESAP_TIPI = [
+    ('esit', 'Eşit Bölüşüm (Ekstra Gider - Borç Olarak Yansır)'),
+    ('hisse', 'Arsa Payına Göre (Ekstra Gider - Borç Olarak Yansır)'),
+    ('brut_metrekare', 'Brüt Metrekareye Göre (Ekstra Gider - Borç Olarak Yansır)'),
+    ('sabit_aidat', 'Sabit Aidat Kapsamında (Borç Yansıtma)'),
+]
+
+class Site(models.Model):
+    """Birden fazla site yönetimi için"""
+    adi = models.CharField(max_length=100, verbose_name="Site Adı")
+    slug = models.SlugField(unique=True, verbose_name="URL Kodu", help_text="Örn: sefa4-sitesi")
+    aciklama = models.TextField(blank=True, verbose_name="Açıklama")
+    aktif = models.BooleanField(default=True, verbose_name="Aktif")
+    
+    # İletişim bilgileri
+    adres = models.TextField(blank=True, verbose_name="Adres")
+    telefon = models.CharField(max_length=20, blank=True, verbose_name="Telefon")
+    email = models.EmailField(blank=True, verbose_name="E-posta")
+    
+    # Siteye özel ayarlar (isteğe bağlı)
+    logo = models.ImageField(upload_to='site_logos/', blank=True, null=True, verbose_name="Logo")
+    
+    def __str__(self):
+        return self.adi
+    
+    class Meta:
+        verbose_name = "Site"
+        verbose_name_plural = "Siteler"
+
 class Blok(models.Model):
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, verbose_name="Site", null=True, blank=True)
+    BLOK_LAR = [...]
+    blok_adi = models.CharField(max_length=1, choices=BLOK_LAR, unique=True, verbose_name="Blok Adı")
+
     BLOK_LAR = [
         ('A', 'A Blok'),
         ('B', 'B Blok'),
@@ -26,6 +78,10 @@ class Blok(models.Model):
         verbose_name_plural = "Bloklar"
 
 class Daire(models.Model):
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, verbose_name="Site", null=True, blank=True)
+    blok = models.ForeignKey(Blok, on_delete=models.CASCADE, verbose_name="Blok", related_name='daireler')
+    daire_no = models.CharField(max_length=10, verbose_name="Daire No")
+
     TASINMAZ_TIPI = [
         ('kat_mulkiyeti', 'Kat Mülkiyeti'),
         ('kat_irtifaki', 'Kat İrtifakı'),
@@ -319,6 +375,8 @@ Site yönetim portalına giriş yapabilmeniz için bilgileriniz oluşturulmuştu
 # bina/models.py - Kisi modelindeki KISI_TIPI seçeneklerini güncelleyin
 
 class Kisi(models.Model):
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, verbose_name="Site", null=True, blank=True)
+    ad_soyad = models.CharField(max_length=100, verbose_name="Ad Soyad")
     KISI_TIPI = [
         ('ev_sahibi', 'Ev Sahibi'),
         ('kiraci', 'Kiracı'),
@@ -392,6 +450,8 @@ class DaireIliskisi(models.Model):
 # bina/models.py - Aidat sınıfı
 
 class Aidat(models.Model):
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, verbose_name="Site", null=True, blank=True)
+    daire = models.ForeignKey(Daire, on_delete=models.CASCADE, verbose_name="Daire")
     AIDAT_TIPI = [
         ('sabit', 'Sabit Aidat'),
         ('ekstra', 'Ekstra Gider Aidatı'),
@@ -601,6 +661,8 @@ class Aidat(models.Model):
     
     
 class Gider(models.Model):
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, verbose_name="Site", null=True, blank=True)
+    tip = models.CharField(max_length=20, choices=GIDER_TIPLERI, verbose_name="Gider Tipi")
     GIDER_TIPLERI = [
         ('elektrik', 'Elektrik'),
         ('su', 'Su'),
@@ -949,6 +1011,7 @@ class GiderTaksit(models.Model):
 # ==================== SİTE TEMEL BİLGİLERİ ====================
 class SiteAyarlari(models.Model):
     """Sitenin temel sabit bilgileri (sadece 1 kayıt)"""
+    #site = models.OneToOneField(Site, on_delete=models.CASCADE, verbose_name="Site", null=True, blank=True)
     site_adi = models.CharField(max_length=200, verbose_name="Site Adı")
     adres = models.TextField(verbose_name="Adres")
     il = models.CharField(max_length=50, verbose_name="İl")
@@ -1208,6 +1271,8 @@ class BankaHareket(models.Model):
 
 class Depozito(models.Model):
     """Kat maliklerinden alınan depozito yönetimi"""
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, verbose_name="Site", null=True, blank=True)
+    daire = models.ForeignKey(Daire, on_delete=models.CASCADE, verbose_name="Daire", related_name='depozitolar')
     DURUM = [
         ('alindi', 'Alındı'),
         ('iade_edildi', 'İade Edildi'),
