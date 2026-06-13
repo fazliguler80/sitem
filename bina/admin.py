@@ -9,6 +9,8 @@ import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from django.contrib import admin
+from .models import Blok, Daire, Kisi, Aidat, Gider, Depozito, Site
 from django import forms
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
@@ -43,6 +45,20 @@ from django.shortcuts import render
 from django.urls import path
 from django.utils.html import format_html
 from datetime import datetime, timedelta
+
+class MultiSiteAdminMixin:
+    """Site bazlı filtreleme yapan admin mixin"""
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.session.get('aktif_site_id'):
+            return qs.filter(site_id=request.session.get('aktif_site_id'))
+        return qs
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.site_id and request.session.get('aktif_site_id'):
+            obj.site_id = request.session.get('aktif_site_id')
+        super().save_model(request, obj, form, change)
 
 class TarihFiltresiMixin:
     """Admin liste ekranlarına hızlı tarih filtresi ekleyen mixin"""
@@ -254,7 +270,7 @@ class DaireIliskisiInlineForDaire(admin.TabularInline):
             kwargs["queryset"] = Kisi.objects.order_by('ad_soyad')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-class KisiAdmin(admin.ModelAdmin):
+class KisiAdmin(MultiSiteAdminMixin, admin.ModelAdmin):
     list_display = ['ad_soyad', 'kisi_tipi', 'diger_aciklama', 'telefon', 'email', 'aktif_mi', 'daire_bilgisi']
     list_filter = ['kisi_tipi', 'aktif_mi']
     search_fields = ['ad_soyad', 'telefon', 'email', 'tc_kimlik', 'diger_aciklama']
@@ -307,7 +323,7 @@ class FirmaAdmin(admin.ModelAdmin):
     list_filter = ('tip', 'aktif_mi')
     search_fields = ('firma_adi', 'yetkili_kisi')
 
-class DaireAdmin(admin.ModelAdmin):
+class DaireAdmin(MultiSiteAdminMixin, admin.ModelAdmin):
     list_display = ('blok', 'daire_no', 'kat', 'daire_tipi', 'malik_bilgisi', 
                     'isletme_giderlerinden_muaf', 'demirbas_giderlerinden_muaf', 'durum')
     list_filter = ('blok', 'daire_tipi', 'isletme_giderlerinden_muaf', 'demirbas_giderlerinden_muaf')
@@ -496,7 +512,7 @@ class DaireFiltresi(SimpleListFilter):
         return queryset
 
 
-class AidatAdmin(TarihFiltresiMixin, admin.ModelAdmin):
+class AidatAdmin(MultiSiteAdminMixin, TarihFiltresiMixin, admin.ModelAdmin):
     tarih_alan = 'odeme_tarihi'
     list_display = ('daire', 'ay', 'yil', 'aidat_tipi', 'tutar', 'odeme_yapildi_mi', 'odeme_tarihi', 'kim_odedi_bilgisi')
     list_filter = (
@@ -1625,7 +1641,7 @@ class AsgariUcretAdmin(admin.ModelAdmin):
     list_display = ['yil', 'brut_ucret', 'isci_sgk_payi', 'isveren_sgk_payi']
     list_editable = ['brut_ucret']
 
-class GiderAdmin(TarihFiltresiMixin, admin.ModelAdmin):
+class GiderAdmin(MultiSiteAdminMixin, TarihFiltresiMixin, admin.ModelAdmin):
     tarih_alan = 'tarih'
     list_display = ('tip', 'tutar', 'tarih', 'hesap_tipi', 'blok', 'muaf_daire_sayisi', 'aciklama', 'taksitlendir_button')
     list_filter = ('tip', 'tarih', 'hesap_tipi', 'blok')
@@ -2084,7 +2100,7 @@ class GiderAdmin(TarihFiltresiMixin, admin.ModelAdmin):
 
     
         
-class DepozitoAdmin(admin.ModelAdmin):
+class DepozitoAdmin(MultiSiteAdminMixin, admin.ModelAdmin):
     list_display = ('daire', 'kisi', 'tutar', 'alinma_tarihi', 'durum', 'guncel_bakiye', 'hareket_ekle_button')
     list_filter = ('durum', 'alinma_tarihi')
     search_fields = ('daire__blok__blok_adi', 'daire__daire_no', 'kisi__ad_soyad')
@@ -2671,9 +2687,43 @@ Not: Şifrenizi bilmiyorsanız yöneticiden yeni şifre talep edebilirsiniz.
 
 admin_site.register(DaireKullanici, DaireKullaniciAdmin)
 
+# ========== SITE BAZLI ADMIN SINIFLARI ==========
+
+class BlokAdmin(MultiSiteAdminMixin, admin.ModelAdmin):
+    list_display = ('site', 'blok_adi', 'kat_sayisi', 'daire_sayisi')
+    list_filter = ('site',)
+    search_fields = ('blok_adi',)
+
+class DaireAdmin(MultiSiteAdminMixin, admin.ModelAdmin):
+    list_display = ('site', 'blok', 'daire_no', 'kat', 'daire_tipi')
+    list_filter = ('site', 'blok')
+    search_fields = ('daire_no',)
+
+class KisiAdmin(MultiSiteAdminMixin, admin.ModelAdmin):
+    list_display = ('site', 'ad_soyad', 'kisi_tipi', 'telefon')
+    list_filter = ('site', 'kisi_tipi')
+    search_fields = ('ad_soyad', 'telefon')
+
+class AidatAdmin(MultiSiteAdminMixin, TarihFiltresiMixin, admin.ModelAdmin):
+    tarih_alan = 'odeme_tarihi'
+    list_display = ('site', 'daire', 'ay', 'yil', 'tutar', 'odeme_yapildi_mi')
+    list_filter = ('site', 'ay', 'yil', 'odeme_yapildi_mi')
+    search_fields = ('daire__daire_no',)
+
+class GiderAdmin(MultiSiteAdminMixin, TarihFiltresiMixin, admin.ModelAdmin):
+    tarih_alan = 'tarih'
+    list_display = ('site', 'tip', 'tutar', 'tarih', 'hesap_tipi')
+    list_filter = ('site', 'tip', 'tarih')
+    search_fields = ('aciklama',)
+
+class DepozitoAdmin(MultiSiteAdminMixin, admin.ModelAdmin):
+    list_display = ('site', 'daire', 'kisi', 'tutar', 'durum')
+    list_filter = ('site', 'durum')
+    search_fields = ('daire__daire_no', 'kisi__ad_soyad')
+
 # Diğer modeller
 admin_site.register(SiteAyarlari)
-admin_site.register(Blok)
+admin_site.register(Blok, BlokAdmin)
 admin_site.register(Daire, DaireAdmin)
 admin_site.register(Kisi, KisiAdmin)
 admin_site.register(DaireIliskisi, DaireIliskisiAdmin)
