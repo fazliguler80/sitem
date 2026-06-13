@@ -1,0 +1,32 @@
+{% if sites %}
+<div style="background: #1e3c72; color: white; padding: 10px 15px; margin-bottom: 20px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+    <div>
+        <strong>🏢 Aktif Site:</strong>
+        <select id="site_selector" style="margin-left: 10px; padding: 5px 10px; border-radius: 3px;">
+            <option value="">-- Site Seçin --</option>
+            {% for site in sites %}
+            <option value="{{ site.id }}" {% if aktif_site_id|stringformat:"s" == site.id|stringformat:"s" %}selected{% endif %}>
+                {{ site.adi }}
+            </option>
+            {% endfor %}
+        </select>
+        <button type="button" id="site_degistir" style="margin-left: 10px; padding: 5px 15px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">
+            🔄 Değiştir
+        </button>
+    </div>
+    <div>
+        <small>Seçilen siteye göre veriler filtrelenir</small>
+    </div>
+</div>
+
+<script>
+document.getElementById('site_degistir').addEventListener('click', function() {
+    var siteId = document.getElementById('site_selector').value;
+    if (siteId) {
+        window.location.href = '/admin/site-degistir/' + siteId + '/';
+    } else {
+        alert('Lütfen bir site seçin!');
+    }
+});
+</script>
+{% endif %}

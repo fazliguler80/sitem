@@ -4,6 +4,19 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from bina.models import DaireKullanici, Depozito, DepozitoHareket
 
+from django.shortcuts import redirect
+from django.contrib.admin.views.decorators import staff_member_required
+
+@staff_member_required
+def site_degistir(request, site_id):
+    from bina.models import Site
+    try:
+        site = Site.objects.get(id=site_id, aktif=True)
+        request.session['aktif_site_id'] = site.id
+    except Site.DoesNotExist:
+        pass
+    return redirect(request.META.get('HTTP_REFERER', '/admin/'))
+
 @login_required(login_url='/portal/login/')
 def portal_depozito_gecmisi(request):
     """Portal kullanıcısının depozito geçmişini göster"""
