@@ -2,11 +2,12 @@
 Django settings for sitem project.
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -111,13 +112,24 @@ SILENCED_SYSTEM_CHECKS = ["security.W019"]
 
 WSGI_APPLICATION = 'sitem.wsgi.application'
 
-# Database - SQLite
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# SQLite - Yerel geliştirme için
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# PostgreSQL - Render'da çalışırken (ortam değişkeni ile)
+if os.environ.get('RENDER'):
+    import dj_database_url
+    DATABASES['default'] = dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=600
+    )
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
