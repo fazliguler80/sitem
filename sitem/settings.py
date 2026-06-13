@@ -24,6 +24,7 @@ ALLOWED_HOSTS = [
     'fazliguler80.pythonanywhere.com',
     'nokrat.com',
     'www.nokrat.com',
+    'sitem-kx2q.onrender.com',
 ]
 
 # CSRF ayarları
@@ -153,3 +154,12 @@ FILE_CHARSET = 'utf-8'
 # E-posta Ayarları
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'site@nokrat.com'
+
+#import dj_database_url
+
+# Render PostgreSQL bağlantısı (GEÇİCİ - sadece migration için)
+#import os
+#DATABASES['default'] = dj_database_url.config(
+#    default='postgresql://site_yonetim_db_gx6o_user:CPwiqbrWz0SLz7BJc0J6ovE93npcCoxI@dpg-d8m96b3sq97s73883n7g-a:5432/site_yonetim_db_gx6o',
+#    conn_max_age=600
+#)
