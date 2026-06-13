@@ -123,3 +123,7 @@ def portal_depozito_detay(request, depozito_id):
     }
     
     return render(request, 'portal/depozito_detay.html', context)
+
+def home_page(request):
+    """Ana sayfa görünümü"""
+    return render(request, 'home.html')
