@@ -242,7 +242,7 @@ Sayın {self.kisi.ad_soyad},
 
 Site yönetim portalına giriş yapabilmeniz için bilgileriniz oluşturulmuştur.
 
-🌐 Giriş Adresi: http://127.0.0.1:8000/portal/login/
+🌐 Giriş Adresi: https://www.nokrat.com/portal/login/
 👤 Kullanıcı Adı: {self.kullanici.username}
 🔑 Şifre: {sifre}
 

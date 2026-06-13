@@ -2514,7 +2514,7 @@ Sayın {item.kisi.ad_soyad},
 
 Portal giriş bilgileriniz:
 
-🌐 Giriş Adresi: http://127.0.0.1:8000/portal/login/
+🌐 Giriş Adresi: https://www.nokrat.com/portal/login/
 👤 Kullanıcı Adı: {item.kullanici.username}
 🔑 Şifre: (Mevcut şifrenizi kullanın veya "Şifremi Unuttum" butonuna tıklayın)
 
