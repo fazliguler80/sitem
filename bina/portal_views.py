@@ -1,6 +1,7 @@
 # bina/portal_views.py - TAMAMEN DÜZELTİLMİŞ DOSYA
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum
@@ -17,6 +18,18 @@ from .models import (
     Depozito, DepozitoHareket, SiteAyarlari
 )
 
+@login_not_required
+def portal_site_degistir(request, site_id):
+    """Portal için site seçici"""
+    from bina.models import Site
+    try:
+        site = Site.objects.get(id=site_id, aktif=True)
+        request.session['portal_site_id'] = site.id
+        request.session['portal_site_adi'] = site.adi
+    except Site.DoesNotExist:
+        pass
+    next_url = request.GET.get('next', '/portal/login/')
+    return redirect(next_url)
 
 # bina/portal_views.py - TAMAMEN DÜZELTİLMİŞ portal_ana_sayfa
 

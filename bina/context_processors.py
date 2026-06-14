@@ -1,14 +1,22 @@
 from bina.models import Site
 
 def site_selector(request):
-    """Admin paneli için site seçici context processor"""
-    sites = []
+    """Site seçici context processor - Tüm sayfalar için"""
+    sites = Site.objects.filter(aktif=True)
     aktif_site_id = None
     
-    # Sadece admin sayfalarında göster
+    # Admin paneli için
     if request.path.startswith('/admin/'):
-        sites = Site.objects.filter(aktif=True)
         aktif_site_id = request.session.get('aktif_site_id')
+    
+    # Portal için
+    elif request.path.startswith('/portal/'):
+        aktif_site_id = request.session.get('portal_site_id')
+    
+    # Ana sayfa ve diğer sayfalar için session'da kayıtlı site varsa
+    else:
+        # Önce admin sitesini kontrol et, yoksa portal sitesini kontrol et
+        aktif_site_id = request.session.get('aktif_site_id') or request.session.get('portal_site_id')
     
     return {
         'sites': sites,

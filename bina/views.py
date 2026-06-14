@@ -17,6 +17,19 @@ def site_degistir(request, site_id):
         pass
     return redirect(request.META.get('HTTP_REFERER', '/admin/'))
 
+@login_not_required
+def portal_site_degistir(request, site_id):
+    """Portal için site seçici"""
+    from bina.models import Site
+    try:
+        site = Site.objects.get(id=site_id, aktif=True)
+        request.session['portal_site_id'] = site.id
+        request.session['portal_site_adi'] = site.adi
+    except Site.DoesNotExist:
+        pass
+    next_url = request.GET.get('next', '/portal/login/')
+    return redirect(next_url)
+
 @login_required(login_url='/portal/login/')
 def portal_depozito_gecmisi(request):
     """Portal kullanıcısının depozito geçmişini göster"""

@@ -5,36 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nokrat.com | Site Yönetim Sistemi</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            padding: 20px;
         }
         .container {
             background: white;
             border-radius: 20px;
             padding: 40px;
-            max-width: 600px;
+            max-width: 500px;
+            width: 100%;
             text-align: center;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
         h1 {
             color: #333;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+            font-size: 28px;
         }
-        p {
+        .subtitle {
             color: #666;
-            line-height: 1.6;
             margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .site-selector {
+            margin-bottom: 30px;
+        }
+        .site-selector select {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .site-selector select:focus {
+            outline: none;
+            border-color: #667eea;
         }
         .buttons {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             justify-content: center;
             flex-wrap: wrap;
         }
@@ -43,11 +66,16 @@
             border-radius: 8px;
             text-decoration: none;
             font-weight: bold;
-            transition: transform 0.2s;
+            transition: transform 0.2s, opacity 0.2s;
             display: inline-block;
         }
         .btn:hover {
             transform: translateY(-2px);
+        }
+        .btn-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            cursor: not-allowed;
         }
         .btn-admin {
             background: #1e3c72;
@@ -59,26 +87,66 @@
         }
         .info {
             margin-top: 30px;
-            font-size: 14px;
+            font-size: 12px;
             color: #999;
+        }
+        .error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 10px;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🏢 Nokrat.com</h1>
-        <h2>Site Yönetim Sistemi</h2>
-        <p>
-            Hoş geldiniz! Bu site, site yönetim işlemlerinizi kolaylaştırmak için geliştirilmiştir.
-            Aidat ödemeleri, gider takibi, duyurular ve daha fazlası için lütfen giriş yapınız.
-        </p>
-        <div class="buttons">
-            <a href="/admin/" class="btn btn-admin">👨‍💼 Admin Girişi</a>
-            <a href="/portal/" class="btn btn-portal">🏠 Daire Sakini Girişi</a>
+        <p class="subtitle">Site Yönetim Sistemi</p>
+        
+        <div class="site-selector">
+            <select id="siteSelect">
+                <option value="">-- Site Seçin --</option>
+                {% for site in sites %}
+                <option value="{{ site.id }}">{{ site.adi }}</option>
+                {% endfor %}
+            </select>
+            <div id="errorMsg" class="error">Lütfen bir site seçin!</div>
         </div>
+        
+        <div class="buttons">
+            <a href="#" id="adminBtn" class="btn btn-admin btn-disabled">👨‍💼 Admin Girişi</a>
+            <a href="#" id="portalBtn" class="btn btn-portal btn-disabled">🏠 Daire Sakini Girişi</a>
+        </div>
+        
         <div class="info">
             <p>© 2026 Nokrat.com - Tüm hakları saklıdır.</p>
         </div>
     </div>
+
+    <script>
+        const siteSelect = document.getElementById('siteSelect');
+        const adminBtn = document.getElementById('adminBtn');
+        const portalBtn = document.getElementById('portalBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        
+        function updateButtons() {
+            const selectedSite = siteSelect.value;
+            if (selectedSite) {
+                adminBtn.href = '/admin/site-degistir/' + selectedSite + '/?next=/admin/';
+                portalBtn.href = '/portal/site-degistir/' + selectedSite + '/?next=/portal/login/';
+                adminBtn.classList.remove('btn-disabled');
+                portalBtn.classList.remove('btn-disabled');
+                errorMsg.style.display = 'none';
+            } else {
+                adminBtn.href = '#';
+                portalBtn.href = '#';
+                adminBtn.classList.add('btn-disabled');
+                portalBtn.classList.add('btn-disabled');
+            }
+        }
+        
+        siteSelect.addEventListener('change', updateButtons);
+        updateButtons();
+    </script>
 </body>
 </html>

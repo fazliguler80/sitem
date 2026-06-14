@@ -4,6 +4,8 @@ from django.contrib.auth import views as auth_views
 from . import portal_views
 
 urlpatterns = [
+    path('site-degistir/<int:site_id>/', views.portal_site_degistir, name='portal_site_degistir'),
+    
     # Giriş/Çıkış
     path('login/', portal_views.portal_login, name='portal_login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='/portal/login/'), name='portal_logout'),
